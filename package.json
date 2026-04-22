@@ -1,12 +1,10 @@
 {
   "name": "bd-retur-app",
   "version": "1.0.0",
-  "description": "BD Retur-assistent — SaaS version",
   "private": true,
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.0",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "@vercel/kv": "^1.0.0"
+    "@upstash/redis": "^1.28.0",
+    "bcryptjs": "^2.4.3"
   }
 }
