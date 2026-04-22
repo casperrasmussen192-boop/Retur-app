@@ -5,66 +5,27 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-function verifyToken(req) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-    const token = authHeader.split(" ")[1];
-    if (!token) return null;
-
-    // Prøv JWT først
-    try {
-      const jwt = await import("jsonwebtoken");
-      if (process.env.JWT_SECRET) {
-        const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
-        return decoded;
-      }
-    } catch {}
-
-    // Fallback: simpel base64 token fra lokal login
-    try {
-      const decoded = JSON.parse(atob(token));
-      if (decoded.email) return { ...decoded, active: true };
-    } catch {}
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Token verificering
+  // Token verificering — accepter både base64 og JWT
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Ikke logget ind" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  let user = null;
+
+  // Prøv base64 (lokal login)
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Ikke logget ind" });
-    }
-    const token = authHeader.split(" ")[1];
+    user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+  } catch {}
 
-    // Prøv base64 decode (lokal login)
-    let user = null;
-    try {
-      user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-    } catch {}
-
-    // Prøv JWT (Vercel KV login)
-    if (!user && process.env.JWT_SECRET) {
-      try {
-        const { default: jwt } = await import("jsonwebtoken");
-        user = jwt.verify(token, process.env.JWT_SECRET);
-      } catch {}
-    }
-
-    if (!user || !user.email) {
-      return res.status(401).json({ error: "Ugyldigt login — prøv at logge ind igen" });
-    }
-  } catch {
-    return res.status(401).json({ error: "Token fejl" });
+  if (!user || !user.email) {
+    return res.status(401).json({ error: "Ugyldigt login — log ind igen" });
   }
 
   const { pdfs, caseNum } = req.body;
@@ -95,7 +56,8 @@ Returner KUN JSON uden markdown:
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4000,
-      system: "Du er en JSON-generator. Returner KUN rå JSON startende med { og sluttende med }. Ingen markdown, ingen forklaring.",
+      system:
+        "Du er en JSON-generator. Returner KUN rå JSON startende med { og sluttende med }. Ingen markdown, ingen forklaring.",
       messages: [{ role: "user", content }],
     });
 
@@ -121,7 +83,7 @@ Returner KUN JSON uden markdown:
 
     return res.status(200).json({ success: true, data: parsed });
   } catch (err) {
-    console.error("Fejl:", err);
+    console.error("Fejl:", err.message);
     return res.status(500).json({ error: "Analyse fejlede: " + err.message });
   }
 }
