@@ -230,7 +230,7 @@
 // ── Auth check — send til login hvis ikke logget ind ──
 (function checkLogin() {
   const token = localStorage.getItem('bd_token');
-  if (!token) { window.location.href = '/login'; return; }
+  if (!token) { window.location.href = 'login.html'; return; }
   const email = localStorage.getItem('bd_email') || '';
   let plan = 'pro';
   try { const d = JSON.parse(atob(token)); plan = d.plan || 'pro'; } catch {}
@@ -245,7 +245,7 @@
 function logout() {
   localStorage.removeItem('bd_token');
   localStorage.removeItem('bd_email');
-  window.location.href = '/login';
+  window.location.href = 'login.html';
 }
 
 function getApiKey() {
@@ -293,7 +293,7 @@ function b64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onl
 
 async function go(){
   const apiKey=getApiKey();
-  if(!apiKey){window.location.href='/login';return;}
+  if(!apiKey){window.location.href='login.html';return;}
   const btn=document.getElementById('ab');
   btn.disabled=true;
   ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
@@ -323,12 +323,13 @@ async function go(){
     let forsøg = 0;
     while(forsøg < 3){
       try{
-        const resp = await fetch('https://api.anthropic.com/v1/messages',{
+        const resp = await fetch('/api/analyse',{
           method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,
-            system:'Du er en JSON-generator. Returner KUN rå JSON startende med { og sluttende med }. Ingen markdown, ingen forklaring.',
-            messages:[{role:'user',content}]})
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+          body:JSON.stringify({
+            pdfs: content.filter(c=>c.type==='document').map(c=>({name:c.title,data:c.source.data})),
+            caseNum
+          })
         });
 
         if(resp.status === 429){
@@ -341,22 +342,8 @@ async function go(){
         if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${resp.status}`);}
 
         const result = await resp.json();
-        const raw = (result.content||[]).map(c=>c.text||'').join('');
-        const clean = raw.replace(/```json|```/g,'').trim();
-
-        let batchParsed;
-        try{ batchParsed = JSON.parse(clean); }
-        catch(e1){
-          const m = clean.match(/\{[\s\S]*\}/);
-          if(!m){ console.warn('Ingen JSON i batch '+(b+1)); break; }
-          try{ batchParsed = JSON.parse(m[0]); }
-          catch(e2){
-            const fixed = m[0].replace(/,\s*([}\]])/g,'$1').replace(/[\t\n\r]/g,' ').trim();
-            try{ batchParsed = JSON.parse(fixed); }
-            catch(e3){ console.warn('JSON fejl batch '+(b+1)); break; }
-          }
-        }
-
+        if(result.error) throw new Error(result.error);
+        const batchParsed = result.data;
         if(batchParsed?.ordrer) alleOrdrer.push(...batchParsed.ordrer);
         // Pause mellem batches
         if(b < totalBatches-1) await new Promise(r => setTimeout(r, 1200));
@@ -767,7 +754,7 @@ async function doChat(){
   area.innerHTML+=`<div class="msg msg-ai" id="${tid}"><div class="avatar">BD</div><div class="bubble"><span class="spin"></span></div></div>`;
   area.scrollTop=area.scrollHeight;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,system:`BD retur-assistent. Sags-data:\n${ctx}\nSvar kort på dansk.`,messages:[{role:'user',content:msg}]})});
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({message:msg,context:ctx})});
     const d=await r.json();
     const reply=(d.content||[]).map(c=>c.text||'').join('')||'Prøv igen.';
     document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">${reply.replace(/\n/g,'<br>')}</div></div>`;
