@@ -6,31 +6,17 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  // Token verificering
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Ikke logget ind" });
+  }
+  const token = authHeader.split(" ")[1];
+  let user = null;
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Ikke logget ind" });
-    }
-    const token = authHeader.split(" ")[1];
-
-    let user = null;
-    try {
-      user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-    } catch {}
-
-    if (!user && process.env.JWT_SECRET) {
-      try {
-        const { default: jwt } = await import("jsonwebtoken");
-        user = jwt.verify(token, process.env.JWT_SECRET);
-      } catch {}
-    }
-
-    if (!user || !user.email) {
-      return res.status(401).json({ error: "Ugyldigt login" });
-    }
-  } catch {
-    return res.status(401).json({ error: "Token fejl" });
+    user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+  } catch {}
+  if (!user || !user.email) {
+    return res.status(401).json({ error: "Ugyldigt login" });
   }
 
   const { message, context } = req.body;
@@ -43,7 +29,6 @@ export default async function handler(req, res) {
       system: `Du er BD Brødrene Dahls retur-assistent. Sagens data:\n${context}\nSvar kort og præcist på dansk.`,
       messages: [{ role: "user", content: message }],
     });
-
     const reply = response.content.map((c) => c.text || "").join("");
     return res.status(200).json({ reply });
   } catch (err) {
