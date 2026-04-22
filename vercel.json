@@ -1,10 +1,8 @@
-
 {
   "version": 2,
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/app", "destination": "/public/index.html" },
-    { "source": "/login", "destination": "/public/login.html" },
-    { "source": "/", "destination": "/public/login.html" }
+    { "source": "/(.*)", "destination": "/$1" }
   ]
 }
