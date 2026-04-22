@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BD Retur-assistent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#f5f3ef;--surface:#fff;--border:#e2ddd8;--border-strong:#c8c2bb;
+    --text:#1a1815;--text-2:#6b6560;--text-3:#9e9890;
+    --blue:#1a4fd6;--blue-bg:#eef2fd;--blue-text:#1a4fd6;
+    --green:#1a7a3c;--green-bg:#edf7f0;--green-light:#c8edd3;
+    --red-bg:#fdf0ef;--red-text:#c0392b;
+    --amber-bg:#fdf7ed;--amber:#9a6800;
+    --radius:10px;--radius-sm:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem;font-size:14px;}
+  .container{max-width:900px;margin:0 auto;}
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:2rem;flex-wrap:wrap;}
+  header h1{font-size:20px;font-weight:500;letter-spacing:-0.3px;}
+  header span{font-size:13px;color:var(--text-2);}
+  .bd-logo{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;background:var(--text);color:var(--surface);padding:4px 10px;border-radius:var(--radius-sm);letter-spacing:.05em;flex-shrink:0;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
+  .field-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:6px;display:block;}
+  input[type=text],input[type=password]{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;margin-bottom:1.25rem;}
+  input[type=text]:focus,input[type=password]:focus{border-color:var(--blue);}
+  input[type=number]{width:70px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);background:var(--surface);outline:none;text-align:center;transition:border-color .15s;}
+  input[type=number]:focus{border-color:var(--blue);}
+  input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--blue);flex-shrink:0;}
+  .dropzone{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:2rem 1rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;}
+  .dropzone:hover,.dropzone.over{background:var(--bg);border-color:var(--blue);}
+  .dropzone p{font-size:14px;color:var(--text-2);margin-bottom:4px;}
+  .dropzone small{font-size:12px;color:var(--text-3);}
+  .file-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .file-item{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--radius-sm);padding:8px 12px;}
+  .file-pill{background:var(--blue-bg);color:var(--blue-text);font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:3px 7px;border-radius:4px;flex-shrink:0;}
+  .file-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-size{font-size:12px;color:var(--text-3);}
+  .btn-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;align-items:center;}
+  button{font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;border-radius:var(--radius-sm);padding:0 16px;height:36px;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:background .12s;white-space:nowrap;}
+  button:hover{background:var(--bg);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+  button.primary:hover:not(:disabled){background:#1440b5;}
+  button.success{background:var(--green);color:#fff;border-color:var(--green);}
+  button.success:hover:not(:disabled){background:#155f30;}
+  button.danger{color:var(--red-text);border-color:#f3c4bf;font-size:12px;height:28px;padding:0 10px;}
+  button.danger:hover{background:var(--red-bg);}
+  .progress-wrap{margin-top:10px;display:none;}
+  .progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .progress-fill{height:3px;background:var(--blue);border-radius:2px;transition:width .4s;}
+  .progress-txt{font-size:12px;color:var(--text-2);margin-top:5px;}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid #bbd0f7;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap;}
+  .tab-btn{font-size:13px;padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);transition:all .12s;}
+  .tab-btn:hover{background:var(--bg);}
+  .tab-btn.active{background:var(--surface);color:var(--text);border-color:var(--border-strong);font-weight:500;}
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem;}
+  .stat-box{background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;}
+  .stat-lbl{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+  .stat-val{font-size:24px;font-weight:300;color:var(--text);font-family:'DM Mono',monospace;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:6px 8px;color:var(--text-2);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--bg);}
+  .td-mono{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-2);}
+  .td-bold{font-weight:500;}
+  .td-dim{color:var(--text-3);}
+  .td-green{font-weight:500;color:var(--green);}
+  .divider{border:none;border-top:1px solid var(--border);margin:1rem 0;}
+  .retur-row{transition:background .1s;}
+  .retur-row.checked td{background:#f0faf4;}
+  .retur-row.checked td:first-child{border-left:3px solid var(--green);}
+  .retur-row:not(.checked){opacity:1;}
+  .retur-qty-cell{display:flex;align-items:center;gap:8px;}
+  .max-lbl{font-size:11px;color:var(--text-3);}
+  .note-input{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);outline:none;}
+  .note-input:focus{border-color:var(--blue);}
+  .chat-msgs{display:flex;flex-direction:column;gap:10px;min-height:60px;}
+  .msg{display:flex;gap:10px;}
+  .msg-user{justify-content:flex-end;}
+  .bubble{padding:9px 13px;font-size:14px;line-height:1.55;max-width:85%;border-radius:var(--radius);}
+  .msg-ai .bubble{background:var(--bg);border-radius:0 var(--radius) var(--radius) var(--radius);}
+  .msg-user .bubble{background:var(--blue);color:#fff;border-radius:var(--radius) 0 var(--radius) var(--radius);}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--blue-text);flex-shrink:0;margin-top:2px;font-family:'DM Mono',monospace;}
+  .chat-input-row{display:flex;gap:8px;margin-top:12px;}
+  .chat-input-row input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;margin-bottom:0;}
+  .chat-input-row input:focus{border-color:var(--blue);}
+  .ord-block{margin-bottom:20px;}
+  .hl{background:#fff3b0;border-radius:2px;padding:0 1px;}
+  .row-hidden{display:none;}
+  .ord-block:last-child{margin-bottom:0;}
+  .ord-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:8px;}
+  .error-msg{color:var(--red-text);font-size:13px;margin-top:8px;padding:8px 12px;background:var(--red-bg);border-radius:var(--radius-sm);display:none;}
+  .api-hint{font-size:12px;color:var(--text-3);margin-top:4px;margin-bottom:1.25rem;}
+  .api-hint a{color:var(--blue-text);}
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
+  .retur-count-badge{font-size:12px;background:var(--green-bg);color:var(--green);padding:3px 10px;border-radius:99px;font-weight:500;}
+  .select-all-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);margin-bottom:10px;cursor:pointer;}
+
+  /* Fordeling pr ordre */
+  .fordeling-wrapper{margin-top:1.5rem;}
+  .fordeling-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;padding-top:1rem;border-top:1px solid var(--border);}
+  .fordeling-subtitle{font-size:12px;color:var(--text-2);margin-bottom:12px;}
+  .ordre-fordeling-card{border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
+  .ordre-fordeling-card:last-child{margin-bottom:0;}
+  .ordre-fordeling-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
+  .ordre-nr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text);}
+  .ordre-dato{font-size:12px;color:var(--text-3);}
+  .ordre-total-badge{font-size:11px;background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:99px;font-weight:500;}
+  .ordre-fordeling-table{width:100%;}
+  .ordre-fordeling-table td{padding:6px 12px;border-bottom:1px solid var(--border);font-size:13px;}
+  .ordre-fordeling-table tr:last-child td{border-bottom:none;}
+  .ingen-retur{padding:8px 12px;font-size:12px;color:var(--text-3);font-style:italic;}
+  .sum-footer{display:flex;gap:16px;padding:10px 14px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:13px;color:var(--green);font-weight:500;margin-top:12px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="top-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:28px;height:28px;background:#eef2fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#1a4fd6;font-family:'DM Mono',monospace;">BD</div>
+      <span style="font-size:13px;color:var(--text-2);" id="top-email"></span>
+      <span id="top-plan" style="font-size:11px;padding:2px 8px;border-radius:99px;background:#edf7f0;color:#1a7a3c;font-weight:500;"></span>
+    </div>
+    <button onclick="logout()" style="font-size:12px;height:28px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text-2);cursor:pointer;">Log ud</button>
+  </div>
+  <header>
+    <div class="bd-logo">BD</div>
+    <h1>Retur-assistent</h1>
+    <span>Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</span>
+  </header>
+
+  <div class="card" id="upload-card">
+    <label class="field-lbl">Sagsnummer</label>
+    <input type="text" id="case-num" placeholder="f.eks. 255560-CR" style="max-width:300px;"/>
+    <label class="field-lbl">Følgeseddel-PDF'er fra SAP</label>
+    <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
+      <p>Klik her eller træk PDF-filer ind</p>
+      <small>Upload alle ordrer på sagen på én gang</small>
+      <input type="file" id="fi" accept=".pdf,application/pdf" multiple style="display:none"/>
+    </div>
+    <div class="file-list" id="file-list"></div>
+    <div class="error-msg" id="err"></div>
+    <div class="progress-wrap" id="pw">
+      <div class="progress-bar"><div class="progress-fill" id="pb" style="width:0%"></div></div>
+      <div class="progress-txt" id="pt"></div>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="ab" onclick="go()" disabled>Analyser ordrer</button>
+      <button onclick="clearAll()">Ryd alt</button>
+    </div>
+  </div>
+
+  <!-- Retur editor -->
+  <div id="retur-editor" style="display:none;">
+    <div class="card">
+      <div class="section-header">
+        <h3 style="font-size:15px;font-weight:500;">Angiv antal retur</h3>
+        <span class="retur-count-badge" id="retur-badge">0 varer valgt</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Vælg varer og angiv antal retur. Botten fordeler automatisk på de rigtige ordrenumre.</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..." oninput="filterRetur(this.value)" style="max-width:320px;margin-bottom:0;" />
+        <span id="soeg-count" style="font-size:12px;color:var(--text-3);"></span>
+      </div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Skriv antal i feltet ud for de varer der skal retur — rækken markeres automatisk.</div>
+      <div style="overflow-x:auto;">
+        <table id="retur-table">
+          <thead><tr>
+            <th style="width:32px;"></th>
+            <th>Materiale</th>
+            <th>Varenr.</th>
+            <th>Købt i alt</th>
+            <th>Antal retur</th>
+            <th>Note / årsag</th>
+          </tr></thead>
+          <tbody id="retur-tbody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:1.25rem;">
+        <button class="success" onclick="genererRetur()">Generer returliste</button>
+        <button onclick="document.getElementById('retur-editor').style.display='none';document.getElementById('results').style.display='';">Tilbage</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultater -->
+  <div id="results" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <input type="text" id="global-search" placeholder="🔍  Søg på materiale eller varenr..." oninput="globalFilter(this.value)" style="max-width:360px;margin-bottom:0;"/>
+      <span id="global-search-count" style="font-size:12px;color:var(--text-3);"></span>
+      <button id="clear-search-btn" onclick="clearGlobalSearch()" style="display:none;font-size:12px;height:28px;padding:0 10px;">Ryd søgning</button>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="sw('o',this)">Samlet oversigt</button>
+      <button class="tab-btn" onclick="sw('d',this)">Pr. ordre</button>
+      <button class="tab-btn" onclick="sw('r',this)">Returliste</button>
+      <button class="tab-btn" onclick="sw('c',this)">Spørg AI</button>
+    </div>
+
+    <div id="t-o" class="card">
+      <div class="stats-row" id="stats"></div>
+      <div id="o-tbl"></div>
+      <div class="divider"></div>
+      <button class="primary" onclick="visReturEditor()">Angiv antal retur</button>
+    </div>
+
+    <div id="t-d" class="card" style="display:none;"><div id="d-content"></div></div>
+
+    <div id="t-r" class="card" style="display:none;">
+      <div id="r-content"><p style="font-size:13px;color:var(--text-2);">Tryk "Angiv antal retur" og generer returliste for at se den her.</p></div>
+    </div>
+
+    <div id="t-c" class="card" style="display:none;">
+      <div class="chat-msgs" id="chat"></div>
+      <div class="chat-input-row">
+        <input type="text" id="ci" placeholder="Spørg f.eks. 'Hvilken ordre har flest retur?'" onkeydown="if(event.key==='Enter')doChat()"/>
+        <button class="primary" onclick="doChat()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Auth check — send til login hvis ikke logget ind ──
+(function checkLogin() {
+  const token = localStorage.getItem('bd_token');
+  if (!token) { window.location.href = '/login'; return; }
+  const email = localStorage.getItem('bd_email') || '';
+  let plan = 'pro';
+  try { const d = JSON.parse(atob(token)); plan = d.plan || 'pro'; } catch {}
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById('top-email');
+    const pl = document.getElementById('top-plan');
+    if (el) el.textContent = email;
+    if (pl) { pl.textContent = plan.charAt(0).toUpperCase() + plan.slice(1); }
+  });
+})();
+
+function logout() {
+  localStorage.removeItem('bd_token');
+  localStorage.removeItem('bd_email');
+  window.location.href = '/login';
+}
+
+function getApiKey() {
+  // Hent token til API-kald
+  return localStorage.getItem('bd_token') || '';
+}
+
+let files=[], parsed=null, ctx='', returData=[];
+
+const dz=document.getElementById('dz'), fi=document.getElementById('fi');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
+fi.addEventListener('change',()=>{addFiles(fi.files);fi.value='';});
+
+function addFiles(list){
+  for(const f of list)
+    if((f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))&&!files.find(x=>x.name===f.name&&x.size===f.size))
+      files.push(f);
+  renderFiles();
+  document.getElementById('ab').disabled=files.length===0;
+  document.getElementById('err').style.display='none';
+}
+function removeFile(i){files.splice(i,1);renderFiles();document.getElementById('ab').disabled=files.length===0;}
+function renderFiles(){
+  document.getElementById('file-list').innerHTML=files.map((f,i)=>`
+    <div class="file-item">
+      <span class="file-pill">PDF</span>
+      <span class="file-name">${f.name}</span>
+      <span class="file-size">${Math.round(f.size/1024)} KB</span>
+      <button class="danger" onclick="removeFile(${i})">Fjern</button>
+    </div>`).join('');
+}
+function clearAll(){
+  files=[];parsed=null;ctx='';returData=[];
+  renderFiles();
+  document.getElementById('ab').disabled=true;
+  ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('pw').style.display='none';
+  document.getElementById('err').style.display='none';
+}
+function setP(pct,txt){document.getElementById('pw').style.display='block';document.getElementById('pb').style.width=pct+'%';document.getElementById('pt').innerHTML=txt;}
+function showErr(msg){const el=document.getElementById('err');el.textContent=msg;el.style.display='block';document.getElementById('pw').style.display='none';}
+function b64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
+
+async function go(){
+  const apiKey=getApiKey();
+  if(!apiKey){window.location.href='/login';return;}
+  const btn=document.getElementById('ab');
+  btn.disabled=true;
+  ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('err').style.display='none';
+  const caseNum=document.getElementById('case-num').value.trim()||'ukendt';
+  // Bundter af 5 PDF'er for at undgå token-grænser
+  const BATCH_SIZE = 5;
+  const alleOrdrer = [];
+  const totalBatches = Math.ceil(files.length / BATCH_SIZE);
+
+  for(let b = 0; b < totalBatches; b++){
+    const batchFiles = files.slice(b * BATCH_SIZE, (b+1) * BATCH_SIZE);
+    const pct = Math.round((b / totalBatches) * 78);
+    setP(10 + pct, `<span class="spin"></span>Analyserer ${b+1} af ${totalBatches} bundter (${(b)*BATCH_SIZE+1}–${Math.min((b+1)*BATCH_SIZE, files.length)} af ${files.length} filer)...`);
+
+    const content = [];
+    for(const file of batchFiles){
+      try{
+        const data = await b64(file);
+        content.push({type:'document', source:{type:'base64', media_type:'application/pdf', data}, title:file.name});
+      }catch(e){ console.error('Fil fejl:', file.name); }
+    }
+    if(!content.length) continue;
+
+    content.push({type:'text', text:`Sagsnummer: ${caseNum}\nUdtrækker ALLE varelinjer fra disse SAP-følgesedler.\nReturner KUN JSON:\n{"ordrer":[{"ordrenr":"<nr>","dato":"<dd-mm-yy>","linjer":[{"varenr":"<nr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`});
+
+    let forsøg = 0;
+    while(forsøg < 3){
+      try{
+        const resp = await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,
+            system:'Du er en JSON-generator. Returner KUN rå JSON startende med { og sluttende med }. Ingen markdown, ingen forklaring.',
+            messages:[{role:'user',content}]})
+        });
+
+        if(resp.status === 429){
+          const ventetid = (forsøg+1) * 15000;
+          setP(10+pct, `<span class="spin"></span>Rate limit — venter ${ventetid/1000} sek...`);
+          await new Promise(r => setTimeout(r, ventetid));
+          forsøg++; continue;
+        }
+
+        if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${resp.status}`);}
+
+        const result = await resp.json();
+        const raw = (result.content||[]).map(c=>c.text||'').join('');
+        const clean = raw.replace(/```json|```/g,'').trim();
+
+        let batchParsed;
+        try{ batchParsed = JSON.parse(clean); }
+        catch(e1){
+          const m = clean.match(/\{[\s\S]*\}/);
+          if(!m){ console.warn('Ingen JSON i batch '+(b+1)); break; }
+          try{ batchParsed = JSON.parse(m[0]); }
+          catch(e2){
+            const fixed = m[0].replace(/,\s*([}\]])/g,'$1').replace(/[\t\n\r]/g,' ').trim();
+            try{ batchParsed = JSON.parse(fixed); }
+            catch(e3){ console.warn('JSON fejl batch '+(b+1)); break; }
+          }
+        }
+
+        if(batchParsed?.ordrer) alleOrdrer.push(...batchParsed.ordrer);
+        // Pause mellem batches
+        if(b < totalBatches-1) await new Promise(r => setTimeout(r, 1200));
+        break;
+
+      }catch(e){
+        if(forsøg >= 2){ showErr('Fejl i batch '+(b+1)+': '+e.message); btn.disabled=false; return; }
+        forsøg++;
+      }
+    }
+  }
+
+  if(!alleOrdrer.length){ showErr('Ingen ordrer kunne læses. Prøv igen.'); btn.disabled=false; return; }
+  parsed = { ordrer: alleOrdrer };
+  ctx=JSON.stringify(parsed);
+  setP(100,'Analyse fuldført ✓ ('+alleOrdrer.length+' ordrer)');
+  setTimeout(()=>document.getElementById('pw').style.display='none',1000);
+  renderResults(caseNum);
+  document.getElementById('results').style.display='';
+  applyGlobalFilter();
+  document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
+  btn.disabled=false;
+}
+
+function getTotals(){
+  if(!parsed)return{};
+  const t={};
+  for(const ord of parsed.ordrer||[])
+    for(const l of ord.linjer||[]){
+      const k=l.varenr||l.navn||'?';
+      if(!t[k])t[k]={navn:l.navn||k,varenr:l.varenr||'',antal:0,enhed:l.enhed||'stk'};
+      t[k].antal+=Number(l.antal)||0;
+    }
+  return t;
+}
+
+function renderResults(caseNum){
+  const t=getTotals(),ks=Object.keys(t);
+  const total=ks.reduce((s,k)=>s+t[k].antal,0);
+  const nOrd=(parsed.ordrer||[]).length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat-box"><div class="stat-lbl">Ordrer</div><div class="stat-val">${nOrd}</div></div>
+    <div class="stat-box"><div class="stat-lbl">Unikke varer</div><div class="stat-val">${ks.length}</div></div>
+    <div class="stat-box"><div class="stat-lbl">Enheder i alt</div><div class="stat-val">${Math.round(total)}</div></div>`;
+  document.getElementById('o-tbl').innerHTML=ks.length
+    ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
+    :'<p style="color:var(--text-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
+  renderPrOrdre();
+}
+
+let globalSearchTerm = '';
+
+function globalFilter(val){
+  globalSearchTerm = val.toLowerCase().trim();
+  const countEl = document.getElementById('global-search-count');
+  const clearBtn = document.getElementById('clear-search-btn');
+  clearBtn.style.display = globalSearchTerm ? '' : 'none';
+
+  // Also sync retur editor search if open
+  const soegInput = document.getElementById('soeg-input');
+  if(soegInput){ soegInput.value = val; filterRetur(val); }
+
+  // Filter current active tab
+  applyGlobalFilter();
+}
+
+function clearGlobalSearch(){
+  document.getElementById('global-search').value = '';
+  globalFilter('');
+}
+
+function applyGlobalFilter(){
+  const term = globalSearchTerm;
+  const countEl = document.getElementById('global-search-count');
+
+  // ── Oversigt tab ──
+  const oRows = document.querySelectorAll('#o-tbl tbody tr');
+  let oVis = 0;
+  oRows.forEach(row => {
+    const txt = row.textContent.toLowerCase();
+    const match = !term || txt.includes(term);
+    row.classList.toggle('row-hidden', !match);
+    if(match) oVis++;
+  });
+
+  // ── Pr. ordre tab ──
+  const dRows = document.querySelectorAll('#d-content tbody tr');
+  let dVis = 0;
+  dRows.forEach(row => {
+    const txt = row.textContent.toLowerCase();
+    const match = !term || txt.includes(term);
+    row.classList.toggle('row-hidden', !match);
+    if(match) dVis++;
+  });
+  // Hide entire ord-block if all its rows are hidden
+  document.querySelectorAll('#d-content .ord-block').forEach(block => {
+    const visRows = block.querySelectorAll('tbody tr:not(.row-hidden)');
+    block.style.display = visRows.length === 0 && term ? 'none' : '';
+  });
+
+  // ── Returliste tab ──
+  const rRows = document.querySelectorAll('#r-content table:first-of-type tbody tr');
+  let rVis = 0;
+  rRows.forEach(row => {
+    const txt = row.textContent.toLowerCase();
+    const match = !term || txt.includes(term);
+    row.classList.toggle('row-hidden', !match);
+    if(match) rVis++;
+  });
+  // Also filter fordeling pr ordre in returliste
+  document.querySelectorAll('.ordre-fordeling-card').forEach(card => {
+    const rows = card.querySelectorAll('tbody tr');
+    let cardVis = 0;
+    rows.forEach(row => {
+      const txt = row.textContent.toLowerCase();
+      const match = !term || txt.includes(term);
+      row.classList.toggle('row-hidden', !match);
+      if(match) cardVis++;
+    });
+    card.style.display = rows.length > 0 && cardVis === 0 && term ? 'none' : '';
+  });
+
+  // Update count
+  if(term){
+    const total = oVis + dVis + rVis;
+    countEl.textContent = total > 0 ? `${oVis} resultater` : 'Ingen resultater';
+  } else {
+    countEl.textContent = '';
+  }
+}
+
+function renderPrOrdre(){
+  // Byg retur-map: varenr -> returAntal fordelt pr ordre
+  const fordeling=returData.length?beregnFordeling():[];
+  const returPrOrdre={};
+  for(const ord of fordeling){
+    returPrOrdre[ord.ordrenr]={};
+    for(const l of ord.linjer){
+      const k=l.varenr||l.navn||'?';
+      returPrOrdre[ord.ordrenr][k]=(returPrOrdre[ord.ordrenr][k]||0)+l.returAntal;
+    }
+  }
+
+  const harRetur=returData.some(r=>r.checked&&r.returAntal>0);
+
+  document.getElementById('d-content').innerHTML=(parsed.ordrer||[]).map(ord=>{
+    const rMap=returPrOrdre[ord.ordrenr]||{};
+    const linjer=ord.linjer||[];
+    const ordRetur=Object.values(rMap).reduce((s,v)=>s+v,0);
+    const rows=linjer.map(l=>{
+      const k=l.varenr||l.navn||'?';
+      const retur=rMap[k]||0;
+      const rest=Math.round(l.antal)-retur;
+      const returCell=harRetur
+        ?(retur>0?`<td class="td-green">${retur}</td>`:`<td class="td-dim">—</td>`)
+        :'';
+      const restCell=harRetur
+        ?(retur>0?`<td class="${rest>0?'td-dim':'td-green'}">${rest}</td>`:`<td class="td-dim">${Math.round(l.antal)}</td>`)
+        :'';
+      return `<tr>
+        <td>${l.navn||'—'}</td>
+        <td class="td-mono">${l.varenr||'—'}</td>
+        <td class="td-bold">${Math.round(l.antal)}</td>
+        ${returCell}${restCell}
+        <td class="td-mono">${l.enhed||'stk'}</td>
+      </tr>`;
+    }).join('');
+
+    const thRetur=harRetur?'<th style="color:var(--green)">Retur</th><th>Tilbage</th>':'';
+    const badge=harRetur&&ordRetur>0?`<span class="ordre-total-badge" style="margin-left:8px;">${Math.round(ordRetur)} retur</span>`:'';
+
+    return `<div class="ord-block">
+      <div class="ord-title" style="display:flex;align-items:center;">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}</div>
+      <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div>`;
+  }).join('');
+}
+
+function visReturEditor(){
+  const t=getTotals(),ks=Object.keys(t);
+  returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
+  soegTerm=globalSearchTerm;
+  const si=document.getElementById('soeg-input');if(si)si.value=globalSearchTerm;
+  const sc=document.getElementById('soeg-count');if(sc)sc.textContent='';
+  renderReturTable();
+  document.getElementById('results').style.display='none';
+  document.getElementById('retur-editor').style.display='';
+  updateBadge();
+}
+
+let soegTerm='';
+
+function filterRetur(val){
+  soegTerm=val.toLowerCase().trim();
+  renderReturTable();
+}
+
+function renderReturTable(){
+  const synlige=returData.filter((_,i)=>{
+    if(!soegTerm)return true;
+    const r=returData[i];
+    return r.navn.toLowerCase().includes(soegTerm)||r.varenr.toLowerCase().includes(soegTerm);
+  });
+  const countEl=document.getElementById('soeg-count');
+  if(soegTerm&&countEl) countEl.textContent=`${synlige.length} af ${returData.length} varer`;
+  else if(countEl) countEl.textContent='';
+  document.getElementById('retur-tbody').innerHTML=returData.map((r,i)=>{
+    const vis=!soegTerm||r.navn.toLowerCase().includes(soegTerm)||r.varenr.toLowerCase().includes(soegTerm);
+    if(!vis)return `<tr style="display:none" id="rrow-${i}"></tr>`;
+    return `
+    <tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
+      <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
+      <td>${r.navn}</td>
+      <td class="td-mono">${r.varenr||'—'}</td>
+      <td class="td-dim">${Math.round(r.antal)} ${r.enhed}</td>
+      <td>
+        <div class="retur-qty-cell">
+          <input type="number" min="0" max="${r.antal}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/>
+          <span class="max-lbl">/ ${Math.round(r.antal)}</span>
+        </div>
+      </td>
+      <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value"/></td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleRow(i,checked){
+  returData[i].checked=checked;
+  const row=document.getElementById('rrow-'+i);
+  row.classList.toggle('checked',checked);
+  row.querySelector('input[type=number]').disabled=!checked;
+  row.querySelector('input.note-input').disabled=!checked;
+  updateBadge(); updateSelectAll();
+}
+function toggleAll(checked){returData.forEach((r,i)=>{r.checked=checked;});renderReturTable();updateBadge();}
+function updateQty(i,val){
+  const v=Math.max(0,Math.min(Number(val),returData[i].antal));
+  returData[i].returAntal=v;
+  document.getElementById('qty-'+i).value=Math.round(v);
+  // Auto-tjek rækken hvis antal > 0, fjern flueben hvis 0
+  if(v>0 && !returData[i].checked){ returData[i].checked=true; toggleRow(i,true); document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=true; }
+  if(v===0 && returData[i].checked){ returData[i].checked=false; toggleRow(i,false); document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=false; }
+}
+function updateBadge(){const n=returData.filter(r=>r.checked).length;document.getElementById('retur-badge').textContent=`${n} vare${n===1?'':'r'} valgt`;}
+function updateSelectAll(){document.getElementById('select-all').checked=returData.every(r=>r.checked);}
+
+// ─── FORDELING PR. ORDRE ────────────────────────────────────────────────────
+// For hvert valgt varenr med returAntal > 0:
+// Gå igennem ordrerne sorteret efter dato (ældst først).
+// Træk fra ældste ordre indtil returAntal er opbrugt.
+function beregnFordeling(){
+  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  // Sorter ordrer: parse dato "dd-mm-yy" eller brug ordrenr som fallback
+  const ordrer=[...(parsed.ordrer||[])].sort((a,b)=>{
+    const pd=s=>{if(!s)return 0;const p=s.split('-');if(p.length===3){const[d,m,y]=p;return new Date(`20${y}`,m-1,d);}return 0;};
+    return pd(a.dato)-pd(b.dato);
+  });
+
+  // Byg map: ordrenr -> { varenr -> beholdning }
+  const beholdning={};
+  for(const ord of ordrer){
+    beholdning[ord.ordrenr]={};
+    for(const l of ord.linjer||[]){
+      const k=l.varenr||l.navn||'?';
+      beholdning[ord.ordrenr][k]=(beholdning[ord.ordrenr][k]||0)+Number(l.antal)||0;
+    }
+  }
+
+  // Fordel retur
+  // Resultat: [{ordrenr, dato, linjer:[{varenr,navn,enhed,returAntal,note}]}]
+  const fordeling={};
+  for(const ord of ordrer) fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',linjer:[]};
+
+  for(const r of valgte){
+    const k=r.varenr||r.navn||'?';
+    let tilbage=r.returAntal;
+    for(const ord of ordrer){
+      if(tilbage<=0)break;
+      const tilgaengelig=beholdning[ord.ordrenr][k]||0;
+      if(tilgaengelig<=0)continue;
+      const trækker=Math.min(tilgaengelig,tilbage);
+      fordeling[ord.ordrenr].linjer.push({varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trækker,note:r.note});
+      tilbage-=trækker;
+    }
+  }
+  return Object.values(fordeling);
+}
+
+function genererRetur(){
+  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  if(!valgte.length){alert('Vælg mindst én vare og angiv antal retur.');return;}
+  const caseNum=document.getElementById('case-num').value||'ukendt';
+  const fordeling=beregnFordeling();
+  const totalRetur=valgte.reduce((s,r)=>s+r.returAntal,0);
+
+  // ── Returliste header ──
+  let html=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+      <div>
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:2px;">Sag: <strong style="color:var(--text)">${caseNum}</strong></div>
+        <div style="font-size:12px;color:var(--text-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="primary" onclick="copyRetur()">Kopier</button>
+        <button onclick="printRetur()">Udskriv</button>
+      </div>
+    </div>`;
+
+  // ── Samlet tabel ──
+  html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:8px;">Samlet returliste</div>
+  <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
+    ${valgte.map(r=>`<tr><td>${r.navn}</td><td class="td-mono">${r.varenr||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${r.enhed}</td><td class="td-dim">${r.note||'—'}</td></tr>`).join('')}
+  </tbody></table>
+  <div class="sum-footer">
+    <span>I alt: ${Math.round(totalRetur)} enheder retur</span>
+    <span>Fordelt på ${valgte.length} varelinjer</span>
+  </div>`;
+
+  // ── Fordeling pr. ordre ──
+  html+=`<div class="fordeling-wrapper">
+    <div class="fordeling-title">Fordeling pr. ordre</div>
+    <div class="fordeling-subtitle">Retur-antallet er automatisk fordelt fra ældste ordre først.</div>`;
+
+  for(const ord of fordeling){
+    const ordTotal=ord.linjer.reduce((s,l)=>s+l.returAntal,0);
+    html+=`<div class="ordre-fordeling-card">
+      <div class="ordre-fordeling-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="ordre-nr">${ord.ordrenr}</span>
+          ${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}
+        </div>
+        ${ordTotal>0?`<span class="ordre-total-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--text-3);">Ingen retur på denne ordre</span>'}
+      </div>`;
+    if(ord.linjer.length){
+      html+=`<table class="ordre-fordeling-table"><tbody>
+        ${ord.linjer.map(l=>`<tr>
+          <td>${l.navn}</td>
+          <td class="td-mono">${l.varenr||'—'}</td>
+          <td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td>
+          <td class="td-dim">${l.note||''}</td>
+        </tr>`).join('')}
+      </tbody></table>`;
+    } else {
+      html+=`<div class="ingen-retur">Ingen varer trækkes retur på denne ordre</div>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  document.getElementById('r-content').innerHTML=html;
+  document.getElementById('retur-editor').style.display='none';
+  document.getElementById('results').style.display='';
+  renderPrOrdre();
+  applyGlobalFilter();
+  sw('r',document.querySelectorAll('.tab-btn')[2]);
+}
+
+function copyRetur(){
+  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  const cn=document.getElementById('case-num').value;
+  const fordeling=beregnFordeling();
+  let s=`RETURLISTE — Sag: ${cn}\nDato: ${new Date().toLocaleDateString('da-DK')}\n\n`;
+  s+=`SAMLET:\n`;
+  valgte.forEach(r=>{s+=`  ${r.navn} (${r.varenr}): ${Math.round(r.returAntal)} ${r.enhed}`;if(r.note)s+=` — ${r.note}`;s+='\n';});
+  s+=`\nFORDELING PR. ORDRE:\n`;
+  fordeling.forEach(ord=>{
+    if(!ord.linjer.length)return;
+    s+=`\n${ord.ordrenr}${ord.dato?' ('+ord.dato+')':''}:\n`;
+    ord.linjer.forEach(l=>{s+=`  ${l.navn} (${l.varenr}): ${Math.round(l.returAntal)} ${l.enhed}`;if(l.note)s+=` — ${l.note}`;s+='\n';});
+  });
+  navigator.clipboard.writeText(s).then(()=>{const b=event.target;const o=b.textContent;b.textContent='Kopieret ✓';setTimeout(()=>b.textContent=o,2000);});
+}
+
+function printRetur(){
+  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  const cn=document.getElementById('case-num').value;
+  const fordeling=beregnFordeling();
+  const samletRows=valgte.map(r=>`<tr><td>${r.navn}</td><td>${r.varenr||'—'}</td><td><strong>${Math.round(r.returAntal)} ${r.enhed}</strong></td><td>${r.note||''}</td></tr>`).join('');
+  let ordreHtml='';
+  fordeling.forEach(ord=>{
+    if(!ord.linjer.length)return;
+    ordreHtml+=`<h3 style="margin:1.5rem 0 6px;font-size:13px;">${ord.ordrenr}${ord.dato?' — '+ord.dato:''}</h3>`;
+    ordreHtml+=`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Note</th></tr></thead><tbody>`;
+    ordreHtml+=ord.linjer.map(l=>`<tr><td>${l.navn}</td><td>${l.varenr||'—'}</td><td><strong style="color:#1a7a3c">${Math.round(l.returAntal)} ${l.enhed}</strong></td><td>${l.note||''}</td></tr>`).join('');
+    ordreHtml+=`</tbody></table>`;
+  });
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>Returliste ${cn}</title><style>body{font-family:sans-serif;padding:2rem;font-size:13px}h2{margin-bottom:2px}h3{color:#555}p{color:#888;margin-bottom:1rem}table{border-collapse:collapse;width:100%;margin-bottom:1rem}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left}th{background:#f5f5f5}.divider{border-top:2px solid #333;margin:1.5rem 0}</style></head><body><h2>Returliste — Sag: ${cn}</h2><p>Dato: ${new Date().toLocaleDateString('da-DK')}</p><h3>Samlet returliste</h3><table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Note</th></tr></thead><tbody>${samletRows}</tbody></table><div class="divider"></div><h3>Fordeling pr. ordre</h3>${ordreHtml}</body></html>`);
+  w.document.close();w.print();
+}
+
+function sw(tab,el){
+  ['o','d','r','c'].forEach(t=>document.getElementById('t-'+t).style.display='none');
+  document.getElementById('t-'+tab).style.display='';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  applyGlobalFilter();
+}
+
+async function doChat(){
+  const inp=document.getElementById('ci'),msg=inp.value.trim();if(!msg)return;
+  inp.value='';
+  const apiKey=document.getElementById('api-key').value.trim();
+  const area=document.getElementById('chat');
+  area.innerHTML+=`<div class="msg msg-user"><div class="bubble">${msg}</div></div>`;
+  const tid='tid'+Date.now();
+  area.innerHTML+=`<div class="msg msg-ai" id="${tid}"><div class="avatar">BD</div><div class="bubble"><span class="spin"></span></div></div>`;
+  area.scrollTop=area.scrollHeight;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,system:`BD retur-assistent. Sags-data:\n${ctx}\nSvar kort på dansk.`,messages:[{role:'user',content:msg}]})});
+    const d=await r.json();
+    const reply=(d.content||[]).map(c=>c.text||'').join('')||'Prøv igen.';
+    document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">${reply.replace(/\n/g,'<br>')}</div></div>`;
+  }catch(e){document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Fejl: ${e.message}</div></div>`;}
+  area.scrollTop=area.scrollHeight;
+}
+</script>
+</body>
+</html>

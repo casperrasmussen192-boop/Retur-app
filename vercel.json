@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/login", "dest": "/public/login.html" },
+    { "src": "/app", "dest": "/public/index.html" },
+    { "src": "/", "dest": "/public/login.html" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}

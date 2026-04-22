@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BD Retur — Log ind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface-2: #1e1e1e;
+    --border: #2a2a2a;
+    --border-active: #404040;
+    --text: #f0ede8;
+    --text-2: #888480;
+    --text-3: #4a4744;
+    --accent: #e8d5a3;
+    --accent-dim: #c4b07a;
+    --green: #4caf82;
+    --green-bg: rgba(76,175,130,0.1);
+    --red: #e05c5c;
+    --red-bg: rgba(224,92,92,0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Left panel — branding */
+  .left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 3rem;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .left::before {
+    content: '';
+    position: absolute;
+    top: -100px; left: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(232,213,163,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .left::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(76,175,130,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .brand-mark {
+    width: 42px; height: 42px;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .brand-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .brand-sub {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+
+  .left-center {
+    padding: 2rem 0;
+  }
+
+  .left-headline {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+  }
+
+  .left-headline span {
+    color: var(--accent);
+  }
+
+  .left-desc {
+    font-size: 15px;
+    color: var(--text-2);
+    line-height: 1.7;
+    max-width: 380px;
+    margin-bottom: 2.5rem;
+  }
+
+  .feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text-2);
+  }
+
+  .feature-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .left-footer {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  /* Right panel — form */
+  .right {
+    width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2.5rem;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .form-wrap {
+    width: 100%;
+    max-width: 360px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .form-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .form-sub {
+    font-size: 14px;
+    color: var(--text-2);
+    margin-bottom: 2rem;
+  }
+
+  /* Tabs */
+  .auth-tabs {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    margin-bottom: 1.75rem;
+    gap: 3px;
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--text-2);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .auth-tab.active {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border-active);
+  }
+
+  /* Fields */
+  .field {
+    margin-bottom: 1rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(232,213,163,0.08);
+  }
+
+  .field input::placeholder { color: var(--text-3); }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .submit-btn:hover { background: var(--accent-dim); }
+  .submit-btn:active { transform: scale(0.99); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-top-color: var(--bg);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Messages */
+  .msg {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .msg-err {
+    background: var(--red-bg);
+    border: 1px solid rgba(224,92,92,0.2);
+    color: var(--red);
+  }
+
+  .msg-ok {
+    background: var(--green-bg);
+    border: 1px solid rgba(76,175,130,0.2);
+    color: var(--green);
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 1.25rem 0;
+    color: var(--text-3);
+    font-size: 12px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Demo info */
+  .demo-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-top: 1.25rem;
+  }
+
+  .demo-box-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    margin-bottom: 8px;
+  }
+
+  .demo-cred {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 4px;
+  }
+
+  .demo-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .demo-val:hover { text-decoration: underline; }
+
+  /* Responsive */
+  @media(max-width: 768px) {
+    body { flex-direction: column; overflow: auto; }
+    .left { display: none; }
+    .right { width: 100%; padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Left branding panel -->
+<div class="left">
+  <div class="brand">
+    <div class="brand-mark">BD</div>
+    <div>
+      <div class="brand-name">Retur-assistent</div>
+      <div class="brand-sub">Brødrene Dahl</div>
+    </div>
+  </div>
+
+  <div class="left-center">
+    <h1 class="left-headline">
+      Retur&shy;håndtering<br/>
+      gjort <span>enkelt</span>
+    </h1>
+    <p class="left-desc">
+      Upload SAP-følgesedler og få automatisk en samlet returliste fordelt på ordrenumre. Sparer timer af manuelt arbejde.
+    </p>
+    <div class="feature-list">
+      <div class="feature"><div class="feature-dot"></div>Læser alle ordrer på en sag automatisk</div>
+      <div class="feature"><div class="feature-dot"></div>Fordeler retur på korrekte ordrenumre</div>
+      <div class="feature"><div class="feature-dot"></div>Understøtter op til 100 PDF-ordrer ad gangen</div>
+      <div class="feature"><div class="feature-dot"></div>Søg på tværs af alle materialer</div>
+    </div>
+  </div>
+
+  <div class="left-footer">© 2025 BD Retur-assistent</div>
+</div>
+
+<!-- Right form panel -->
+<div class="right">
+  <div class="form-wrap">
+    <div class="form-title" id="form-title">Velkommen tilbage</div>
+    <div class="form-sub" id="form-sub">Log ind for at fortsætte</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Log ind</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Opret konto</button>
+    </div>
+
+    <div class="msg msg-err" id="msg-err"></div>
+    <div class="msg msg-ok" id="msg-ok"></div>
+
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="din@email.dk" autocomplete="email"/>
+    </div>
+
+    <div class="field">
+      <label>Adgangskode</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')submit()"/>
+    </div>
+
+    <div class="field" id="field-confirm" style="display:none;">
+      <label>Bekræft adgangskode</label>
+      <input type="password" id="password-confirm" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')submit()"/>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submit()">
+      <div class="btn-spinner" id="spinner"></div>
+      <span id="submit-label">Log ind</span>
+    </button>
+
+    <div class="divider">test-adgang</div>
+
+    <div class="demo-box">
+      <div class="demo-box-title">Demo-konto</div>
+      <div class="demo-cred">
+        <span>Email</span>
+        <span class="demo-val" onclick="fillDemo('email')">demo@bd-retur.dk</span>
+      </div>
+      <div class="demo-cred" style="margin-bottom:0;">
+        <span>Adgangskode</span>
+        <span class="demo-val" onclick="fillDemo('password')">demo1234</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Simpel bruger-database i localStorage (erstattes af backend på Vercel) ──
+const USERS_KEY = 'bd_users';
+const TOKEN_KEY = 'bd_token';
+const EMAIL_KEY = 'bd_email';
+
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem(USERS_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function saveUsers(users) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+// Opret demo-bruger hvis den ikke findes
+(function seedDemo() {
+  const users = getUsers();
+  if (!users['demo@bd-retur.dk']) {
+    users['demo@bd-retur.dk'] = {
+      email: 'demo@bd-retur.dk',
+      password: 'demo1234',
+      name: 'Demo Bruger',
+      active: true,
+      plan: 'pro',
+      createdAt: new Date().toISOString()
+    };
+    saveUsers(users);
+  }
+})();
+
+// Hvis allerede logget ind — send videre til appen
+if (localStorage.getItem(TOKEN_KEY)) {
+  window.location.href = '/app';
+}
+
+let currentTab = 'login';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('field-confirm').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('form-title').textContent = tab === 'login' ? 'Velkommen tilbage' : 'Opret konto';
+  document.getElementById('form-sub').textContent = tab === 'login' ? 'Log ind for at fortsætte' : 'Kom i gang på under et minut';
+  document.getElementById('submit-label').textContent = tab === 'login' ? 'Log ind' : 'Opret konto';
+  clearMsgs();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('msg-err');
+  el.textContent = msg; el.style.display = '';
+  document.getElementById('msg-ok').style.display = 'none';
+}
+
+function showOk(msg) {
+  const el = document.getElementById('msg-ok');
+  el.textContent = msg; el.style.display = '';
+  document.getElementById('msg-err').style.display = 'none';
+}
+
+function clearMsgs() {
+  document.getElementById('msg-err').style.display = 'none';
+  document.getElementById('msg-ok').style.display = 'none';
+}
+
+function setLoading(on) {
+  document.getElementById('submit-btn').disabled = on;
+  document.getElementById('spinner').style.display = on ? 'block' : 'none';
+}
+
+function fillDemo(field) {
+  if (field === 'email') {
+    document.getElementById('email').value = 'demo@bd-retur.dk';
+    document.getElementById('password').focus();
+  } else {
+    document.getElementById('password').value = 'demo1234';
+    switchTab('login');
+  }
+}
+
+async function submit() {
+  clearMsgs();
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const password = document.getElementById('password').value;
+
+  if (!email || !password) { showErr('Udfyld email og adgangskode.'); return; }
+  if (!email.includes('@')) { showErr('Indtast en gyldig email.'); return; }
+
+  setLoading(true);
+
+  // Simuler netværksforsinkelse
+  await new Promise(r => setTimeout(r, 600));
+
+  // ── Tjek om vi har en rigtig backend ──
+  // Prøv /api/login — hvis det fejler, brug lokal fallback
+  let loggedIn = false;
+
+  try {
+    const resp = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(EMAIL_KEY, data.email);
+      loggedIn = true;
+    } else if (resp.status === 401) {
+      const data = await resp.json().catch(() => ({}));
+      setLoading(false);
+      showErr(data.error || 'Forkert email eller adgangskode.');
+      return;
+    }
+    // Other errors fall through to local fallback
+  } catch (e) {
+    // Backend ikke tilgængelig — brug lokal database
+  }
+
+  if (!loggedIn) {
+    // Lokal fallback
+    if (currentTab === 'login') {
+      const users = getUsers();
+      const user = users[email];
+      if (!user || user.password !== password) {
+        setLoading(false);
+        showErr('Forkert email eller adgangskode.');
+        return;
+      }
+      localStorage.setItem(TOKEN_KEY, btoa(JSON.stringify({ email, active: true, plan: user.plan, ts: Date.now() })));
+      localStorage.setItem(EMAIL_KEY, email);
+    } else {
+      // Register
+      const confirmPw = document.getElementById('password-confirm').value;
+      if (password !== confirmPw) { setLoading(false); showErr('Adgangskoderne matcher ikke.'); return; }
+      if (password.length < 8) { setLoading(false); showErr('Adgangskode skal være mindst 8 tegn.'); return; }
+
+      try {
+        const resp = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(EMAIL_KEY, data.email);
+        } else {
+          const data = await resp.json().catch(() => ({}));
+          setLoading(false);
+          showErr(data.error || 'Registrering fejlede.');
+          return;
+        }
+      } catch {
+        // Lokal oprettelse
+        const users = getUsers();
+        if (users[email]) { setLoading(false); showErr('Email er allerede i brug.'); return; }
+        users[email] = { email, password, active: true, plan: 'trial', createdAt: new Date().toISOString() };
+        saveUsers(users);
+        localStorage.setItem(TOKEN_KEY, btoa(JSON.stringify({ email, active: true, plan: 'trial', ts: Date.now() })));
+        localStorage.setItem(EMAIL_KEY, email);
+      }
+    }
+  }
+
+  showOk(currentTab === 'login' ? 'Logger ind...' : 'Konto oprettet! Sender dig videre...');
+  setTimeout(() => { window.location.href = '/app'; }, 700);
+}
+</script>
+</body>
+</html>
