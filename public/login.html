@@ -486,7 +486,7 @@ function saveUsers(users) {
 
 // Hvis allerede logget ind — send videre til appen
 if (localStorage.getItem(TOKEN_KEY)) {
-  window.location.href = '/app';
+  window.location.href = 'index.html';
 }
 
 let currentTab = 'login';
@@ -543,12 +543,33 @@ async function submit() {
   if (!email.includes('@')) { showErr('Indtast en gyldig email.'); return; }
 
   setLoading(true);
+  await new Promise(r => setTimeout(r, 400));
 
-  // Simuler netværksforsinkelse
-  await new Promise(r => setTimeout(r, 600));
+  // ── OPRET KONTO ──
+  if (currentTab === 'register') {
+    const confirmPw = document.getElementById('password-confirm').value;
+    if (password !== confirmPw) { setLoading(false); showErr('Adgangskoderne matcher ikke.'); return; }
+    if (password.length < 8) { setLoading(false); showErr('Adgangskode skal være mindst 8 tegn.'); return; }
+    try {
+      const resp = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await resp.json();
+      if (!resp.ok) { setLoading(false); showErr(data.error || 'Registrering fejlede.'); return; }
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(EMAIL_KEY, data.email);
+      showOk('Konto oprettet! Sender dig videre...');
+      setTimeout(() => { window.location.href = '/app'; }, 700);
+    } catch (e) {
+      setLoading(false);
+      showErr('Kunne ikke oprette konto. Prøv igen.');
+    }
+    return;
+  }
 
-  // ── Tjek om vi har en rigtig backend ──
-  // Prøv /api/login — hvis det fejler, brug lokal fallback
+  // ── LOG IND ──
   let loggedIn = false;
 
   try {
@@ -620,7 +641,7 @@ async function submit() {
     }
   }
 
-  showOk(currentTab === 'login' ? 'Logger ind...' : 'Konto oprettet! Sender dig videre...');
+  showOk('Logger ind...');
   setTimeout(() => { window.location.href = '/app'; }, 700);
 }
 </script>
