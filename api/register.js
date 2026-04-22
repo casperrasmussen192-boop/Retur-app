@@ -1,40 +1,53 @@
 // api/register.js
-// Opretter en ny bruger. Kaldes når nogen tilmelder sig.
-// I en rigtig opsætning ville du sende en bekræftelses-email og oprette en Stripe-kunde.
-
+import { Redis } from "@upstash/redis";
 import bcrypt from "bcryptjs";
-import { kv } from "@vercel/kv";
-import { signToken } from "./_auth.js";
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const { email, password } = req.body;
-  if (!email || !password)
+
+  if (!email || !password) {
     return res.status(400).json({ error: "Email og adgangskode påkrævet" });
+  }
+
+  if (!email.includes("@")) {
+    return res.status(400).json({ error: "Ugyldig email" });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ error: "Adgangskode skal være mindst 8 tegn" });
+  }
 
   const key = `user:${email.toLowerCase()}`;
-  const existing = await kv.get(key);
-  if (existing) return res.status(409).json({ error: "Email er allerede i brug" });
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  // Tjek om email allerede er i brug
+  const existing = await redis.get(key);
+  if (existing) {
+    return res.status(409).json({ error: "Email er allerede i brug" });
+  }
+
+  // Hash adgangskode og gem bruger
+  const passwordHash = await bcrypt.hash(password, 10);
   const user = {
-    id: crypto.randomUUID(),
     email: email.toLowerCase(),
     passwordHash,
-    active: true,       // Sæt til false hvis du vil kræve betaling før adgang
-    plan: "trial",      // "trial" | "pro" | "team"
+    active: true,
+    plan: "trial",
     createdAt: new Date().toISOString(),
   };
 
-  await kv.set(key, user);
+  await redis.set(key, JSON.stringify(user));
 
-  const token = signToken({
-    userId: user.id,
+  // Returner token
+  const token = Buffer.from(JSON.stringify({
     email: user.email,
-    active: user.active,
+    active: true,
     plan: user.plan,
-  });
+    ts: Date.now(),
+  })).toString("base64");
 
   return res.status(201).json({ token, email: user.email, plan: user.plan });
 }
