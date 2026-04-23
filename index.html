@@ -447,6 +447,12 @@ function renderResults(caseNum){
 
 let globalSearchTerm = '';
 
+function matchWords(text, term) {
+  if (!term) return true;
+  const words = term.split(/\s+/).filter(Boolean);
+  return words.every(w => text.includes(w));
+}
+
 function globalFilter(val){
   globalSearchTerm = val.toLowerCase().trim();
   const countEl = document.getElementById('global-search-count');
@@ -475,7 +481,7 @@ function applyGlobalFilter(){
   let oVis = 0;
   oRows.forEach(row => {
     const txt = row.textContent.toLowerCase();
-    const match = !term || txt.includes(term);
+    const match = !term || matchWords(txt, term);
     row.classList.toggle('row-hidden', !match);
     if(match) oVis++;
   });
@@ -485,7 +491,7 @@ function applyGlobalFilter(){
   let dVis = 0;
   dRows.forEach(row => {
     const txt = row.textContent.toLowerCase();
-    const match = !term || txt.includes(term);
+    const match = !term || matchWords(txt, term);
     row.classList.toggle('row-hidden', !match);
     if(match) dVis++;
   });
@@ -500,7 +506,7 @@ function applyGlobalFilter(){
   let rVis = 0;
   rRows.forEach(row => {
     const txt = row.textContent.toLowerCase();
-    const match = !term || txt.includes(term);
+    const match = !term || matchWords(txt, term);
     row.classList.toggle('row-hidden', !match);
     if(match) rVis++;
   });
@@ -510,7 +516,7 @@ function applyGlobalFilter(){
     let cardVis = 0;
     rows.forEach(row => {
       const txt = row.textContent.toLowerCase();
-      const match = !term || txt.includes(term);
+      const match = !term || matchWords(txt, term);
       row.classList.toggle('row-hidden', !match);
       if(match) cardVis++;
     });
@@ -597,13 +603,14 @@ function renderReturTable(){
   const synlige=returData.filter((_,i)=>{
     if(!soegTerm)return true;
     const r=returData[i];
-    return r.navn.toLowerCase().includes(soegTerm)||r.varenr.toLowerCase().includes(soegTerm);
+    const txt=(r.navn+' '+r.varenr).toLowerCase();
+    return matchWords(txt, soegTerm);
   });
   const countEl=document.getElementById('soeg-count');
   if(soegTerm&&countEl) countEl.textContent=`${synlige.length} af ${returData.length} varer`;
   else if(countEl) countEl.textContent='';
   document.getElementById('retur-tbody').innerHTML=returData.map((r,i)=>{
-    const vis=!soegTerm||r.navn.toLowerCase().includes(soegTerm)||r.varenr.toLowerCase().includes(soegTerm);
+    const vis=!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(), soegTerm);
     if(!vis)return `<tr style="display:none" id="rrow-${i}"></tr>`;
     return `
     <tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
