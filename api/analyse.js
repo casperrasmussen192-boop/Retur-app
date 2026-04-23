@@ -37,10 +37,17 @@ export default async function handler(req, res) {
   content.push({
     type: "text",
     text: `Sagsnummer: ${caseNum || "ukendt"}
-Udtrækker ALLE varelinjer fra SAP-dokumenterne (følgesedler OG kreditnotaer).
+Udtrækker ALLE varelinjer fra SAP-dokumenterne.
+
+VIGTIGT om dokumentnumre:
+- Brug KUN ordrenumre der starter med 1010 (f.eks. 1010398710)
+- Brug KUN kreditnotanumre der starter med 300 (f.eks. 3001055388)  
+- IGNORER fakturanumre der starter med 111 (f.eks. 111378757) — brug dem ikke som ordrenr
+- Hvis et dokument kun har et fakturanummer (111...), så brug filnavnet som ordrenr i stedet
+
 For kreditnotaer skal antal være negativt (f.eks. -3).
 Returner KUN JSON uden markdown — afslut altid JSON korrekt:
-{"ordrer":[{"ordrenr":"<ordrenr>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
+{"ordrer":[{"ordrenr":"<1010... eller 300... nummer>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
   });
 
   try {
