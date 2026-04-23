@@ -255,7 +255,7 @@ function getApiKey() {
 // ── GEM OG GENDAN SESSION ────────────────────────────────
 const SESSION_KEY = 'bd_session';
 
-function gemSession() {
+async function gemSession() {
   if (!parsed) return;
   const session = {
     caseNum: document.getElementById('case-num')?.value || '',
@@ -263,43 +263,80 @@ function gemSession() {
     returData,
     ts: Date.now()
   };
+  // Gem lokalt først (øjeblikkelig)
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  // Gem også på server (på tværs af enheder)
+  try {
+    const token = getApiKey();
+    if (token) {
+      await fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ session })
+      });
+    }
+  } catch(e) { console.log('Server-gem fejlede:', e.message); }
 }
 
-function genopretSession() {
-  if (parsed) return; // Allerede genoprettet
+async function genopretSession() {
+  if (parsed) return;
+  // Prøv server først
+  try {
+    const token = getApiKey();
+    if (token) {
+      const resp = await fetch('/api/session', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.session?.parsed) {
+          indlaesSession(data.session);
+          return;
+        }
+      }
+    }
+  } catch(e) { console.log('Server-session fejlede, prøver lokal:', e.message); }
+
+  // Fallback: lokal localStorage
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return;
     const session = JSON.parse(raw);
     if (!session?.parsed) return;
-    // Maks 24 timer gammel
-    if (Date.now() - session.ts > 24 * 60 * 60 * 1000) {
+    if (Date.now() - session.ts > 7 * 24 * 60 * 60 * 1000) {
       localStorage.removeItem(SESSION_KEY);
       return;
     }
-    parsed = session.parsed;
-    ctx = JSON.stringify(parsed);
-    returData = session.returData || [];
-    if (session.caseNum) {
-      const cn = document.getElementById('case-num');
-      if (cn) cn.value = session.caseNum;
-    }
+    indlaesSession(session);
+  } catch(e) { console.log('Lokal session fejlede:', e.message); }
+}
+
+function indlaesSession(session) {
+  parsed = session.parsed;
+  ctx = JSON.stringify(parsed);
+  returData = session.returData || [];
+  const cnEl = document.getElementById('case-num');
+  if (cnEl && session.caseNum) cnEl.value = session.caseNum;
+  if (document.getElementById('results')) {
     renderResults(session.caseNum || '');
     document.getElementById('results').style.display = '';
-    document.getElementById('chat').innerHTML = '<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Tidligere session genoprettet. Du kan fortsætte hvor du slap.</div></div>';
-    // Genopret returData i editor
-    if (returData.length) {
-      // Marker badge
-      updateBadge();
-    }
-  } catch(e) {
-    console.log('Kunne ikke genoprette session:', e.message);
+    const chatEl = document.getElementById('chat');
+    if (chatEl) chatEl.innerHTML = '<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Session genoprettet — du kan fortsætte hvor du slap.</div></div>';
+    if (returData.length) updateBadge();
   }
 }
 
-function rydSession() {
+async function rydSession() {
   localStorage.removeItem(SESSION_KEY);
+  try {
+    const token = getApiKey();
+    if (token) {
+      await fetch('/api/session', {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+    }
+  } catch(e) {}
 }
 
 let files=[], parsed=null, ctx='', returData=[];
