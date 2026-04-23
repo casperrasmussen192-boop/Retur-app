@@ -10,74 +10,72 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Token verificering — accepter både base64 og JWT
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Ikke logget ind" });
   }
-
   const token = authHeader.split(" ")[1];
   let user = null;
-
-  // Prøv base64 (lokal login)
   try {
     user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
   } catch {}
-
   if (!user || !user.email) {
     return res.status(401).json({ error: "Ugyldigt login — log ind igen" });
   }
 
   const { pdfs, caseNum } = req.body;
-
   if (!pdfs || !Array.isArray(pdfs) || pdfs.length === 0) {
     return res.status(400).json({ error: "Ingen PDF-filer modtaget" });
   }
 
   const content = pdfs.map((pdf) => ({
     type: "document",
-    source: {
-      type: "base64",
-      media_type: "application/pdf",
-      data: pdf.data,
-    },
+    source: { type: "base64", media_type: "application/pdf", data: pdf.data },
     title: pdf.name,
   }));
 
   content.push({
     type: "text",
     text: `Sagsnummer: ${caseNum || "ukendt"}
-Udtrækker ALLE varelinjer fra SAP-følgesedlerne.
-Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<ordrenr>","dato":"<leveringsdato dd-mm-yy>","linjer":[{"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
+Udtrækker ALLE varelinjer fra SAP-dokumenterne (følgesedler OG kreditnotaer).
+For kreditnotaer skal antal være negativt (f.eks. -3).
+Returner KUN JSON uden markdown — afslut altid JSON korrekt:
+{"ordrer":[{"ordrenr":"<ordrenr>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
   });
 
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 4000,
-      system:
-        "Du er en JSON-generator. Returner KUN rå JSON startende med { og sluttende med }. Ingen markdown, ingen forklaring.",
+      max_tokens: 8000,
+      system: "Du er en JSON-generator specialiseret i BD Brødrene Dahl SAP-dokumenter. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
       messages: [{ role: "user", content }],
     });
 
     const raw = response.content.map((c) => c.text || "").join("");
-    const clean = raw.replace(/```json|```/g, "").trim();
+    let clean = raw.replace(/```json|```/g, "").trim();
 
     let parsed;
     try {
       parsed = JSON.parse(clean);
     } catch {
-      const match = clean.match(/\{[\s\S]*\}/);
-      if (match) {
-        try {
-          parsed = JSON.parse(match[0]);
-        } catch {
-          const fixed = match[0].replace(/,\s*([}\]])/g, "$1").trim();
-          parsed = JSON.parse(fixed);
+      // Forsøg at reparere ufuldstændig JSON
+      clean = clean.replace(/,\s*([}\]])/g, "$1");
+      const opens = (clean.match(/\{/g) || []).length;
+      const closes = (clean.match(/\}/g) || []).length;
+      const openArr = (clean.match(/\[/g) || []).length;
+      const closeArr = (clean.match(/\]/g) || []).length;
+      for (let i = 0; i < openArr - closeArr; i++) clean += "]";
+      for (let i = 0; i < opens - closes; i++) clean += "}";
+      try {
+        parsed = JSON.parse(clean);
+      } catch {
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { parsed = JSON.parse(match[0]); }
+          catch { throw new Error("JSON fejl — prøv med færre PDF'er ad gangen"); }
+        } else {
+          throw new Error("Ingen JSON fundet i svar");
         }
-      } else {
-        throw new Error("Kunne ikke tolke svar som JSON");
       }
     }
 
