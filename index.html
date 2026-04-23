@@ -249,8 +249,56 @@ function logout() {
 }
 
 function getApiKey() {
-  // Hent token til API-kald
   return localStorage.getItem('bd_token') || '';
+}
+
+// ── GEM OG GENDAN SESSION ────────────────────────────────
+const SESSION_KEY = 'bd_session';
+
+function gemSession() {
+  if (!parsed) return;
+  const session = {
+    caseNum: document.getElementById('case-num')?.value || '',
+    parsed,
+    returData,
+    ts: Date.now()
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function genopretSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const session = JSON.parse(raw);
+    if (!session?.parsed) return;
+    // Maks 24 timer gammel
+    if (Date.now() - session.ts > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(SESSION_KEY);
+      return;
+    }
+    parsed = session.parsed;
+    ctx = JSON.stringify(parsed);
+    returData = session.returData || [];
+    if (session.caseNum) {
+      const cn = document.getElementById('case-num');
+      if (cn) cn.value = session.caseNum;
+    }
+    renderResults(session.caseNum || '');
+    document.getElementById('results').style.display = '';
+    document.getElementById('chat').innerHTML = '<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Tidligere session genoprettet. Du kan fortsætte hvor du slap.</div></div>';
+    // Genopret returData i editor
+    if (returData.length) {
+      // Marker badge
+      updateBadge();
+    }
+  } catch(e) {
+    console.log('Kunne ikke genoprette session:', e.message);
+  }
+}
+
+function rydSession() {
+  localStorage.removeItem(SESSION_KEY);
 }
 
 let files=[], parsed=null, ctx='', returData=[];
@@ -281,6 +329,7 @@ function renderFiles(){
 }
 function clearAll(){
   files=[];parsed=null;ctx='';returData=[];
+  rydSession();
   renderFiles();
   document.getElementById('ab').disabled=true;
   ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
@@ -363,6 +412,7 @@ async function go(){
   setTimeout(()=>document.getElementById('pw').style.display='none',1000);
   renderResults(caseNum);
   document.getElementById('results').style.display='';
+  gemSession();
   applyGlobalFilter();
   document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
   btn.disabled=false;
@@ -584,6 +634,7 @@ function updateQty(i,val){
   const v=Math.max(0,Math.min(Number(val),returData[i].antal));
   returData[i].returAntal=v;
   document.getElementById('qty-'+i).value=Math.round(v);
+  gemSession();
   // Auto-tjek rækken hvis antal > 0, fjern flueben hvis 0
   if(v>0 && !returData[i].checked){ returData[i].checked=true; toggleRow(i,true); document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=true; }
   if(v===0 && returData[i].checked){ returData[i].checked=false; toggleRow(i,false); document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=false; }
@@ -699,6 +750,7 @@ function genererRetur(){
   document.getElementById('results').style.display='';
   renderPrOrdre();
   applyGlobalFilter();
+  gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
 }
 
