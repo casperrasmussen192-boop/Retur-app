@@ -267,6 +267,7 @@ function gemSession() {
 }
 
 function genopretSession() {
+  if (parsed) return; // Allerede genoprettet
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return;
@@ -813,6 +814,27 @@ async function doChat(){
   }catch(e){document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Fejl: ${e.message}</div></div>`;}
   area.scrollTop=area.scrollHeight;
 }
+
+// Genopret session når siden er klar
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    // Tjek om elementerne eksisterer før vi forsøger at gendanne
+    if (document.getElementById('case-num') && document.getElementById('results')) {
+      genopretSession();
+    }
+  }, 200);
+});
+
+// Genopret også når bruger navigerer tilbage (back/forward cache)
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted || performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
+    setTimeout(function() {
+      if (document.getElementById('case-num') && document.getElementById('results')) {
+        genopretSession();
+      }
+    }, 100);
+  }
+});
 </script>
 </body>
 </html>
