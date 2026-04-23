@@ -780,20 +780,128 @@ function copyRetur(){
 
 function printRetur(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
-  const cn=document.getElementById('case-num').value;
+  if(!valgte.length){alert('Ingen varer valgt til retur.');return;}
+  const cn=document.getElementById('case-num').value||'ukendt';
   const fordeling=beregnFordeling();
-  const samletRows=valgte.map(r=>`<tr><td>${r.navn}</td><td>${r.varenr||'—'}</td><td><strong>${Math.round(r.returAntal)} ${r.enhed}</strong></td><td>${r.note||''}</td></tr>`).join('');
+  const dato=new Date().toLocaleDateString('da-DK');
+  const totalAntal=valgte.reduce((s,r)=>s+r.returAntal,0);
+  const ordrenumre=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
+
+  const samletRows=valgte.map((r,i)=>`
+    <tr class="${i%2===0?'even':'odd'}">
+      <td>${r.navn}</td>
+      <td class="mono">${r.varenr||'—'}</td>
+      <td class="antal">${Math.round(r.returAntal)}</td>
+      <td class="mono">${r.enhed}</td>
+      <td>${r.note||''}</td>
+    </tr>`).join('');
+
   let ordreHtml='';
   fordeling.forEach(ord=>{
     if(!ord.linjer.length)return;
-    ordreHtml+=`<h3 style="margin:1.5rem 0 6px;font-size:13px;">${ord.ordrenr}${ord.dato?' — '+ord.dato:''}</h3>`;
-    ordreHtml+=`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Note</th></tr></thead><tbody>`;
-    ordreHtml+=ord.linjer.map(l=>`<tr><td>${l.navn}</td><td>${l.varenr||'—'}</td><td><strong style="color:#1a7a3c">${Math.round(l.returAntal)} ${l.enhed}</strong></td><td>${l.note||''}</td></tr>`).join('');
-    ordreHtml+=`</tbody></table>`;
+    ordreHtml+=`
+      <div class="ordre-header">${ord.ordrenr}${ord.dato?' &nbsp;·&nbsp; '+ord.dato:''}</div>
+      <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
+      ${ord.linjer.map((l,i)=>`<tr class="${i%2===0?'even':'odd'}">
+        <td>${l.navn}</td><td class="mono">${l.varenr||'—'}</td>
+        <td class="antal green">${Math.round(l.returAntal)}</td>
+        <td class="mono">${l.enhed}</td><td>${l.note||''}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
   });
+
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>Returliste ${cn}</title><style>body{font-family:sans-serif;padding:2rem;font-size:13px}h2{margin-bottom:2px}h3{color:#555}p{color:#888;margin-bottom:1rem}table{border-collapse:collapse;width:100%;margin-bottom:1rem}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left}th{background:#f5f5f5}.divider{border-top:2px solid #333;margin:1.5rem 0}</style></head><body><h2>Returliste — Sag: ${cn}</h2><p>Dato: ${new Date().toLocaleDateString('da-DK')}</p><h3>Samlet returliste</h3><table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Note</th></tr></thead><tbody>${samletRows}</tbody></table><div class="divider"></div><h3>Fordeling pr. ordre</h3>${ordreHtml}</body></html>`);
-  w.document.close();w.print();
+  w.document.write(`<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<title>Returliste ${cn}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;font-size:12px;color:#1a1815;background:#fff;padding:2.5rem;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #1a1815;}
+  .logo{font-family:'DM Sans',sans-serif;font-size:18px;font-weight:500;background:#1a1815;color:#fff;padding:6px 14px;border-radius:6px;letter-spacing:.05em;}
+  .header-right{text-align:right;}
+  .header-right h1{font-size:20px;font-weight:500;letter-spacing:-.3px;margin-bottom:4px;}
+  .header-right p{font-size:11px;color:#6b6560;}
+  .meta{display:flex;gap:2rem;margin-bottom:1.5rem;padding:12px 16px;background:#f5f3ef;border-radius:8px;}
+  .meta-item{}
+  .meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9e9890;margin-bottom:2px;}
+  .meta-value{font-size:13px;font-weight:500;}
+  .summary-box{display:flex;gap:1rem;margin-bottom:1.5rem;}
+  .stat{flex:1;border:1px solid #e2ddd8;border-radius:8px;padding:10px 14px;}
+  .stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9e9890;margin-bottom:2px;}
+  .stat-v{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;}
+  .stat-v.green{color:#1a7a3c;}
+  .section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b6560;margin-bottom:8px;margin-top:1.5rem;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem;}
+  th{text-align:left;padding:6px 8px;background:#f5f3ef;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;border-bottom:1px solid #e2ddd8;}
+  td{padding:6px 8px;border-bottom:1px solid #e2ddd8;}
+  tr.even td{background:#fff;}
+  tr.odd td{background:#faf9f7;}
+  .mono{font-family:'DM Mono',monospace;font-size:11px;color:#6b6560;}
+  .antal{font-weight:500;text-align:right;}
+  .antal.green{color:#1a7a3c;}
+  .divider{border:none;border-top:2px solid #e2ddd8;margin:1.5rem 0;}
+  .ordre-header{font-size:11px;font-weight:500;background:#eef2fd;color:#1a4fd6;padding:6px 10px;border-radius:6px;margin-bottom:6px;margin-top:1rem;font-family:'DM Mono',monospace;}
+  .footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2ddd8;font-size:10px;color:#9e9890;display:flex;justify-content:space-between;}
+  .total-row td{font-weight:500;border-top:2px solid #1a1815;background:#f5f3ef!important;}
+  @media print{
+    body{padding:1.5rem;}
+    @page{margin:1.5cm;size:A4;}
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">BD</div>
+  <div class="header-right">
+    <h1>Returliste</h1>
+    <p>Brødrene Dahl A/S &nbsp;·&nbsp; Genereret ${dato}</p>
+  </div>
+</div>
+
+<div class="meta">
+  <div class="meta-item"><div class="meta-label">Sagsnummer</div><div class="meta-value">${cn}</div></div>
+  <div class="meta-item"><div class="meta-label">Ordrer</div><div class="meta-value">${ordrenumre||'—'}</div></div>
+  <div class="meta-item"><div class="meta-label">Dato</div><div class="meta-value">${dato}</div></div>
+</div>
+
+<div class="summary-box">
+  <div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${valgte.length}</div></div>
+  <div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div>
+</div>
+
+<div class="section-title">Samlet returliste</div>
+<table>
+  <thead><tr><th>Materiale</th><th>Varenr.</th><th style="text-align:right">Antal retur</th><th>Enhed</th><th>Note</th></tr></thead>
+  <tbody>
+    ${samletRows}
+    <tr class="total-row">
+      <td colspan="2"><strong>I alt</strong></td>
+      <td class="antal"><strong>${Math.round(totalAntal)}</strong></td>
+      <td colspan="2"></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="divider"></div>
+<div class="section-title">Fordeling pr. ordre</div>
+${ordreHtml}
+
+<div class="footer">
+  <span>BD Retur-assistent &nbsp;·&nbsp; retur-app.vercel.app</span>
+  <span>Sag: ${cn} &nbsp;·&nbsp; ${dato}</span>
+</div>
+
+<script>
+  window.onload = function() {
+    window.print();
+  };
+<\/script>
+</body></html>`);
+  w.document.close();
 }
 
 function sw(tab,el){
