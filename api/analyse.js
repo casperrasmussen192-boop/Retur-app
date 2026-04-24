@@ -41,13 +41,19 @@ Udtrækker ALLE varelinjer fra SAP-dokumenterne.
 
 VIGTIGT om dokumentnumre:
 - Brug KUN ordrenumre der starter med 1010 (f.eks. 1010398710)
-- Brug KUN kreditnotanumre der starter med 300 (f.eks. 3001055388)  
+- Brug KUN kreditnotanumre der starter med 300 (f.eks. 3001055388)
 - IGNORER fakturanumre der starter med 111 (f.eks. 111378757) — brug dem ikke som ordrenr
 - Hvis et dokument kun har et fakturanummer (111...), så brug filnavnet som ordrenr i stedet
 
+VIGTIGT om varelinjer:
+- Medtag KUN varelinjer fra hoveddelen af følgesedlen
+- IGNORER alle varelinjer under sektionen "Leveres fra et andet lager" — disse er ikke leveret og må ikke returneres
+- Kun leverede varer med "Leveret" antal > 0 skal medtages
+
 For kreditnotaer skal antal være negativt (f.eks. -3).
+Inkluder pos./linjenummeret fra dokumentet (f.eks. 003, 006, 009).
 Returner KUN JSON uden markdown — afslut altid JSON korrekt:
-{"ordrer":[{"ordrenr":"<1010... eller 300... nummer>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
+{"ordrer":[{"ordrenr":"<1010... eller 300... nummer>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":"<003>","varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
   });
 
   try {
