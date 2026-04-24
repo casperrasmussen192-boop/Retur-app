@@ -462,7 +462,7 @@ function getTotals(){
   for(const ord of parsed.ordrer||[])
     for(const l of ord.linjer||[]){
       const k=l.varenr||l.navn||'?';
-      if(!t[k])t[k]={navn:l.navn||k,varenr:l.varenr||'',antal:0,enhed:l.enhed||'stk'};
+      if(!t[k])t[k]={navn:l.navn||k,varenr:l.varenr||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||''};
       t[k].antal+=Number(l.antal)||0;
     }
   return t;
@@ -709,30 +709,33 @@ function beregnFordeling(){
     return pd(a.dato)-pd(b.dato);
   });
 
-  // Byg map: ordrenr -> { varenr -> beholdning }
+  // Byg map: ordrenr -> { varenr -> {beholdning, pos} }
   const beholdning={};
+  const posMap={}; // varenr -> pos (fra første ordre der har varen)
   for(const ord of ordrer){
     beholdning[ord.ordrenr]={};
     for(const l of ord.linjer||[]){
       const k=l.varenr||l.navn||'?';
       beholdning[ord.ordrenr][k]=(beholdning[ord.ordrenr][k]||0)+Number(l.antal)||0;
+      // Gem pos for dette varenr
+      if(l.pos && !posMap[k]) posMap[k]=l.pos;
     }
   }
 
   // Fordel retur
-  // Resultat: [{ordrenr, dato, linjer:[{varenr,navn,enhed,returAntal,note}]}]
   const fordeling={};
   for(const ord of ordrer) fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',linjer:[]};
 
   for(const r of valgte){
     const k=r.varenr||r.navn||'?';
+    const pos=posMap[k]||r.pos||'';
     let tilbage=r.returAntal;
     for(const ord of ordrer){
       if(tilbage<=0)break;
       const tilgaengelig=beholdning[ord.ordrenr][k]||0;
       if(tilgaengelig<=0)continue;
       const trækker=Math.min(tilgaengelig,tilbage);
-      fordeling[ord.ordrenr].linjer.push({varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trækker,note:r.note});
+      fordeling[ord.ordrenr].linjer.push({pos,varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trækker,note:r.note});
       tilbage-=trækker;
     }
   }
