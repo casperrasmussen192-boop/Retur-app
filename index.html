@@ -573,6 +573,10 @@ function renderPrOrdre(){
   // Byg retur-map: varenr -> returAntal fordelt pr ordre
   const fordeling=returData.length?beregnFordeling():[];
   const returPrOrdre={};
+  // Sorter linjer i fordeling efter pos
+  for(const ord of fordeling){
+    ord.linjer.sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999));
+  }
   for(const ord of fordeling){
     returPrOrdre[ord.ordrenr]={};
     for(const l of ord.linjer){
@@ -585,7 +589,12 @@ function renderPrOrdre(){
 
   document.getElementById('d-content').innerHTML=(parsed.ordrer||[]).map(ord=>{
     const rMap=returPrOrdre[ord.ordrenr]||{};
-    const linjer=ord.linjer||[];
+    // Sorter linjer efter pos-nummer
+    const linjer=[...(ord.linjer||[])].sort((a,b)=>{
+      const pa=parseInt(a.pos)||999;
+      const pb=parseInt(b.pos)||999;
+      return pa-pb;
+    });
     const ordRetur=Object.values(rMap).reduce((s,v)=>s+v,0);
     const rows=linjer.map(l=>{
       const k=l.varenr||l.navn||'?';
@@ -598,6 +607,7 @@ function renderPrOrdre(){
         ?(retur>0?`<td class="${rest>0?'td-dim':'td-green'}">${rest}</td>`:`<td class="td-dim">${Math.round(l.antal)}</td>`)
         :'';
       return `<tr>
+        <td class="td-mono td-dim">${l.pos||'—'}</td>
         <td>${l.navn||'—'}</td>
         <td class="td-mono">${l.varenr||'—'}</td>
         <td class="td-bold">${Math.round(l.antal)}</td>
@@ -611,7 +621,7 @@ function renderPrOrdre(){
 
     return `<div class="ord-block">
       <div class="ord-title" style="display:flex;align-items:center;">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}</div>
-      <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead>
+      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead>
       <tbody>${rows}</tbody></table>
     </div>`;
   }).join('');
