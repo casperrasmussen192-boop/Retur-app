@@ -787,6 +787,7 @@ function genererRetur(){
     if(ord.linjer.length){
       html+=`<table class="ordre-fordeling-table"><tbody>
         ${ord.linjer.map(l=>`<tr>
+          <td class="td-mono td-dim" style="width:44px;">${l.pos||'—'}</td>
           <td>${l.navn}</td>
           <td class="td-mono">${l.varenr||'—'}</td>
           <td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td>
@@ -848,9 +849,9 @@ function printRetur(){
     if(!ord.linjer.length)return;
     ordreHtml+=`
       <div class="ordre-header">${ord.ordrenr}${ord.dato?' &nbsp;·&nbsp; '+ord.dato:''}</div>
-      <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
+      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
       ${ord.linjer.map((l,i)=>`<tr class="${i%2===0?'even':'odd'}">
-        <td>${l.navn}</td><td class="mono">${l.varenr||'—'}</td>
+        <td class="mono" style="color:#9e9890">${l.pos||'—'}</td><td>${l.navn}</td><td class="mono">${l.varenr||'—'}</td>
         <td class="antal green">${Math.round(l.returAntal)}</td>
         <td class="mono">${l.enhed}</td><td>${l.note||''}</td>
       </tr>`).join('')}
