@@ -444,6 +444,84 @@ function aabSag(i) {
   document.getElementById('results').style.display = 'none';
 }
 
+async function grupperOgVis() {
+  const apiKey = getApiKey();
+  if (!apiKey) { showErr('Log ind igen.'); return; }
+  if (!files.length) return;
+
+  const btn = document.getElementById('gb');
+  btn.disabled = true;
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+
+  setP(5, '<span class="spin"></span>Læser sagsnumre fra PDF\'erne...');
+
+  const pdfs = [];
+  for (let i = 0; i < files.length; i++) {
+    setP(5 + Math.round(i / files.length * 30), `<span class="spin"></span>Indlæser ${files[i].name}...`);
+    try { const data = await b64(files[i]); pdfs.push({ name: files[i].name, data }); } catch {}
+  }
+
+  setP(38, '<span class="spin"></span>Finder sagsnumre og grupperer...');
+
+  try {
+    const resp = await fetch('/api/grupper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ pdfs })
+    });
+    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || `HTTP ${resp.status}`); }
+    const result = await resp.json();
+    const nyeSager = result.sager || [];
+
+    setP(70, '<span class="spin"></span>Opdaterer sagsliste...');
+
+    // Gem PDF-data til senere analyse
+    window._pdfCache = {};
+    for (const pdf of pdfs) window._pdfCache[pdf.name] = pdf.data;
+
+    // Flet sager
+    for (const sag of nyeSager) {
+      const idx = alleSager.findIndex(s => s.sagsnr === sag.sagsnr);
+      if (idx >= 0) {
+        for (const ord of sag.ordrer) {
+          if (!alleSager[idx].ordrer.find(o => o.ordrenr === ord.ordrenr)) alleSager[idx].ordrer.push(ord);
+        }
+        if (sag.kunde && !alleSager[idx].kunde) alleSager[idx].kunde = sag.kunde;
+        if (!alleSager[idx].filer) alleSager[idx].filer = [];
+        for (const ord of sag.ordrer) {
+          if (ord.filnavn && !alleSager[idx].filer.includes(ord.filnavn)) alleSager[idx].filer.push(ord.filnavn);
+        }
+      } else {
+        sag.filer = sag.ordrer.map(o => o.filnavn).filter(Boolean);
+        alleSager.push(sag);
+      }
+    }
+    localStorage.setItem('bd_alle_sager', JSON.stringify(alleSager));
+
+    setP(100, `Fandt ${nyeSager.length} sag${nyeSager.length !== 1 ? 'er' : ''} ✓`);
+    setTimeout(() => document.getElementById('pw').style.display = 'none', 800);
+    btn.disabled = false;
+
+    if (nyeSager.length === 1) {
+      // Én sag — gå direkte til analyse
+      const cnEl = document.getElementById('case-num');
+      if (cnEl) cnEl.value = nyeSager[0].sagsnr;
+      go();
+    } else if (nyeSager.length > 1) {
+      visMapper();
+    } else {
+      showErr('Ingen sagsnumre fundet. Skriv sagsnummer manuelt og tryk Analyser.');
+      document.getElementById('ab').style.display = '';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showErr('Fejl: ' + e.message);
+    btn.disabled = false;
+    document.getElementById('pw').style.display = 'none';
+  }
+}
+
 async function grupperPDFer(pdfListe) {
   const apiKey = getApiKey();
   if (!apiKey) return;
