@@ -70,13 +70,23 @@ Returner KUN JSON:
       }
 
       for (const dok of parsed.dokumenter || []) {
-        const sag = (dok.sagsnr || "ukendt").toUpperCase().trim();
+        // Normaliser sagsnr — brug kun taldelene, ignorer bogstaver efter
+        const rawSag = (dok.sagsnr || "ukendt").trim();
+        const match = rawSag.match(/^(\d+)/);
+        const sag = match ? match[1] : rawSag.toUpperCase();
+
         if (!alleGrupper[sag]) {
           alleGrupper[sag] = {
             sagsnr: sag,
             kunde: dok.kunde || "",
             ordrer: [],
+            varianter: [], // Gem de fulde sagsnr-varianter
           };
+        }
+
+        // Gem varianten hvis den er ny
+        if (rawSag && !alleGrupper[sag].varianter.includes(rawSag.toUpperCase())) {
+          alleGrupper[sag].varianter.push(rawSag.toUpperCase());
         }
         if (dok.ordrenr && !alleGrupper[sag].ordrer.find(o => o.ordrenr === dok.ordrenr)) {
           alleGrupper[sag].ordrer.push({
