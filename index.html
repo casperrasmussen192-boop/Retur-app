@@ -390,15 +390,15 @@ function renderSagListe() {
     return;
   }
   el.innerHTML = alleSager.map((sag, i) => `
-    <div class="sag-card" data-sag="${sag.sagsnr.toLowerCase()}" data-kunde="${(sag.kunde||'').toLowerCase()}" onclick="aabSag(${i})">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
-        <div>
-          <div style="font-size:15px;font-weight:500;">${sag.sagsnr}</div>
-          <div class="sag-meta">${sag.kunde||'Ukendt kunde'}</div>
-        </div>
-        <div class="sag-badges">
-          <span class="badge b-blue">${sag.ordrer.length} ordre${sag.ordrer.length !== 1 ? 'r' : ''}</span>
-        </div>
+    <div class="sag-card" data-sag="${sag.sagsnr.toLowerCase()}" data-kunde="${(sag.kunde||'').toLowerCase()}" style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;" onclick="aabSag(${i})" style="cursor:pointer;">
+        <div style="font-size:15px;font-weight:500;">${sag.sagsnr}</div>
+        <div class="sag-meta">${sag.kunde||'Ukendt kunde'}</div>
+        ${sag.varianter && sag.varianter.length > 1 ? `<div class="sag-adresse" style="margin-top:2px;">${sag.varianter.join(' · ')}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span class="badge b-blue" style="pointer-events:none;">${sag.ordrer.length} ordre${sag.ordrer.length !== 1 ? 'r' : ''}</span>
+        <button onclick="sletSag(event,${i})" style="font-size:12px;height:28px;padding:0 10px;color:var(--red-text);border-color:#f3c4bf;background:transparent;" title="Slet sag">Slet</button>
       </div>
     </div>`).join('');
 }
@@ -416,6 +416,23 @@ function filterSager(val) {
   });
   const count = document.getElementById('sag-soeg-count');
   if (count) count.textContent = term ? `${vis} sag${vis !== 1 ? 'er' : ''} fundet` : '';
+}
+
+function sletSag(e, i) {
+  e.stopPropagation();
+  const sag = alleSager[i];
+  if (!confirm(`Slet sag ${sag.sagsnr}?\n\nDette sletter mappen og al gemt data for sagen.`)) return;
+  // Slet session for denne sag
+  localStorage.removeItem('bd_session_' + sag.sagsnr);
+  // Fjern fra liste
+  alleSager.splice(i, 1);
+  localStorage.setItem('bd_alle_sager', JSON.stringify(alleSager));
+  // Ryd analyseret data hvis det var denne sag
+  if (parsed && document.getElementById('case-num')?.value === sag.sagsnr) {
+    parsed = null; ctx = ''; returData = [];
+    document.getElementById('results').style.display = 'none';
+  }
+  renderSagListe();
 }
 
 function aabSag(i) {
