@@ -95,6 +95,11 @@
   .row-hidden{display:none;}
   .ord-block:last-child{margin-bottom:0;}
   .ord-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:8px;}
+  .sag-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;cursor:pointer;transition:all .12s;}
+  .sag-card:hover{border-color:var(--border-strong);background:var(--bg);}
+  .sag-meta{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .sag-adresse{font-size:12px;color:var(--text-3);}
+  .sag-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
   .error-msg{color:var(--red-text);font-size:13px;margin-top:8px;padding:8px 12px;background:var(--red-bg);border-radius:var(--radius-sm);display:none;}
   .api-hint{font-size:12px;color:var(--text-3);margin-top:4px;margin-bottom:1.25rem;}
   .api-hint a{color:var(--blue-text);}
@@ -135,6 +140,22 @@
     <span>Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</span>
   </header>
 
+  <!-- SAGSMAPPER VIEW -->
+  <div id="view-sager" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+      <input type="text" id="sag-soeg" placeholder="🔍  Søg på sagsnr., kundenavn eller adresse..." oninput="filterSager(this.value)" style="flex:1;max-width:400px;margin-bottom:0;"/>
+      <span id="sag-soeg-count" style="font-size:12px;color:var(--text-2);"></span>
+      <button class="btn btn-p" onclick="visUpload()" style="margin-left:auto;">+ Upload nye PDF'er</button>
+    </div>
+    <span class="lbl">Dine sager</span>
+    <div id="sag-liste" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+  <!-- UPLOAD VIEW -->
+  <div id="view-upload">
+    <div id="upload-tilbage" style="display:none;margin-bottom:1rem;">
+      <button class="btn" onclick="visMapper()">← Tilbage til sager</button>
+    </div>
   <div class="card" id="upload-card">
     <label class="field-lbl">Sagsnummer</label>
     <input type="text" id="case-num" placeholder="f.eks. 255560-CR" style="max-width:300px;"/>
@@ -155,6 +176,8 @@
       <button onclick="clearAll()">Ryd alt</button>
     </div>
   </div>
+
+  </div><!-- /view-upload -->
 
   <!-- Retur editor -->
   <div id="retur-editor" style="display:none;">
@@ -340,6 +363,138 @@ async function rydSession() {
 }
 
 let files=[], parsed=null, ctx='', returData=[];
+let alleSager = []; // Alle grupperede sager
+let aktivSagData = null; // Den sag brugeren arbejder på
+
+// ── SAGSMAPPER ──────────────────────────────────────────
+function visMapper() {
+  document.getElementById('view-sager').style.display = '';
+  document.getElementById('view-upload').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('retur-editor').style.display = 'none';
+  renderSagListe();
+}
+
+function visUpload() {
+  document.getElementById('view-sager').style.display = 'none';
+  document.getElementById('view-upload').style.display = '';
+  document.getElementById('upload-tilbage').style.display = alleSager.length > 0 ? '' : 'none';
+}
+
+function renderSagListe() {
+  const el = document.getElementById('sag-liste');
+  if (!alleSager.length) {
+    el.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-2);font-size:14px;">
+      Ingen sager endnu. <button class="btn btn-p" onclick="visUpload()" style="margin-left:8px;">Upload PDF'er</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = alleSager.map((sag, i) => `
+    <div class="sag-card" data-sag="${sag.sagsnr.toLowerCase()}" data-kunde="${(sag.kunde||'').toLowerCase()}" onclick="aabSag(${i})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:15px;font-weight:500;">${sag.sagsnr}</div>
+          <div class="sag-meta">${sag.kunde||'Ukendt kunde'}</div>
+        </div>
+        <div class="sag-badges">
+          <span class="badge b-blue">${sag.ordrer.length} ordre${sag.ordrer.length !== 1 ? 'r' : ''}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function filterSager(val) {
+  const term = val.toLowerCase().trim();
+  const cards = document.querySelectorAll('.sag-card');
+  let vis = 0;
+  cards.forEach(card => {
+    const sag = card.dataset.sag || '';
+    const kunde = card.dataset.kunde || '';
+    const match = !term || sag.includes(term) || kunde.includes(term);
+    card.style.display = match ? '' : 'none';
+    if (match) vis++;
+  });
+  const count = document.getElementById('sag-soeg-count');
+  if (count) count.textContent = term ? `${vis} sag${vis !== 1 ? 'er' : ''} fundet` : '';
+}
+
+function aabSag(i) {
+  const sag = alleSager[i];
+  aktivSagData = sag;
+  // Sæt sagsnummer
+  const cnEl = document.getElementById('case-num');
+  if (cnEl) cnEl.value = sag.sagsnr;
+  // Skjul sager, vis app
+  document.getElementById('view-sager').style.display = 'none';
+  document.getElementById('view-upload').style.display = '';
+  document.getElementById('upload-tilbage').style.display = '';
+  // Hvis sagen har analyseret data i session, genopret
+  const sessionKey = 'bd_session_' + sag.sagsnr;
+  try {
+    const raw = localStorage.getItem(sessionKey);
+    if (raw) {
+      const session = JSON.parse(raw);
+      if (session?.parsed) {
+        indlaesSession(session);
+        return;
+      }
+    }
+  } catch {}
+  // Ellers vis upload
+  document.getElementById('results').style.display = 'none';
+}
+
+async function grupperPDFer(pdfListe) {
+  const apiKey = getApiKey();
+  if (!apiKey) return;
+  // Send til grupper-API
+  const BATCH = 5;
+  const nyeSager = {};
+  for (let b = 0; b < Math.ceil(pdfListe.length / BATCH); b++) {
+    const batch = pdfListe.slice(b * BATCH, (b + 1) * BATCH);
+    const pdfs = [];
+    for (const f of batch) {
+      try {
+        const data = await b64(f);
+        pdfs.push({ name: f.name, data });
+      } catch {}
+    }
+    try {
+      const resp = await fetch('/api/grupper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify({ pdfs })
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        for (const sag of result.sager || []) {
+          if (!nyeSager[sag.sagsnr]) nyeSager[sag.sagsnr] = { ...sag, ordrer: [] };
+          for (const ord of sag.ordrer) {
+            if (!nyeSager[sag.sagsnr].ordrer.find(o => o.ordrenr === ord.ordrenr)) {
+              nyeSager[sag.sagsnr].ordrer.push(ord);
+            }
+          }
+          if (sag.kunde && !nyeSager[sag.sagsnr].kunde) nyeSager[sag.sagsnr].kunde = sag.kunde;
+        }
+      }
+    } catch (e) { console.error('Gruppering fejl:', e); }
+  }
+  // Flet med eksisterende sager
+  for (const sagsnr of Object.keys(nyeSager)) {
+    const idx = alleSager.findIndex(s => s.sagsnr === sagsnr);
+    if (idx >= 0) {
+      // Opdater eksisterende
+      for (const ord of nyeSager[sagsnr].ordrer) {
+        if (!alleSager[idx].ordrer.find(o => o.ordrenr === ord.ordrenr)) {
+          alleSager[idx].ordrer.push(ord);
+        }
+      }
+    } else {
+      alleSager.push(nyeSager[sagsnr]);
+    }
+  }
+  localStorage.setItem('bd_alle_sager', JSON.stringify(alleSager));
+}
 
 const dz=document.getElementById('dz'), fi=document.getElementById('fi');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
@@ -368,6 +523,7 @@ function renderFiles(){
 function clearAll(){
   files=[];parsed=null;ctx='';returData=[];
   rydSession();
+  if(alleSager.length>0){visMapper();return;}
   renderFiles();
   document.getElementById('ab').disabled=true;
   ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
@@ -453,6 +609,8 @@ async function go(){
   gemSession();
   applyGlobalFilter();
   document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
+  // Kør gruppering i baggrunden så sagslisten holdes opdateret
+  grupperPDFer([...files]).catch(()=>{});
   btn.disabled=false;
 }
 
@@ -984,7 +1142,20 @@ async function doChat(){
 // Genopret session når siden er klar
 window.addEventListener('load', function() {
   setTimeout(function() {
-    // Tjek om elementerne eksisterer før vi forsøger at gendanne
+    // Indlæs gemte sager
+    try {
+      const raw = localStorage.getItem('bd_alle_sager');
+      if (raw) alleSager = JSON.parse(raw) || [];
+    } catch {}
+
+    // Vis sagsmapper hvis der er sager, ellers vis upload
+    if (alleSager.length > 0) {
+      visMapper();
+    } else {
+      visUpload();
+    }
+
+    // Genopret session
     if (document.getElementById('case-num') && document.getElementById('results')) {
       genopretSession();
     }
