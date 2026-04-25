@@ -5,158 +5,123 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>BD Retur-assistent</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
-  :root {
-    --bg:#f5f3ef;--surface:#fff;--border:#e2ddd8;--border-strong:#c8c2bb;
-    --text:#1a1815;--text-2:#6b6560;--text-3:#9e9890;
-    --blue:#1a4fd6;--blue-bg:#eef2fd;--blue-text:#1a4fd6;
-    --green:#1a7a3c;--green-bg:#edf7f0;--green-light:#c8edd3;
-    --red-bg:#fdf0ef;--red-text:#c0392b;
-    --amber-bg:#fdf7ed;--amber:#9a6800;
-    --radius:10px;--radius-sm:6px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem;font-size:14px;}
-  .container{max-width:900px;margin:0 auto;}
-  header{display:flex;align-items:baseline;gap:12px;margin-bottom:2rem;flex-wrap:wrap;}
-  header h1{font-size:20px;font-weight:500;letter-spacing:-0.3px;}
-  header span{font-size:13px;color:var(--text-2);}
-  .bd-logo{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;background:var(--text);color:var(--surface);padding:4px 10px;border-radius:var(--radius-sm);letter-spacing:.05em;flex-shrink:0;}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
-  .field-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:6px;display:block;}
-  input[type=text],input[type=password]{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;margin-bottom:1.25rem;}
-  input[type=text]:focus,input[type=password]:focus{border-color:var(--blue);}
-  input[type=number]{width:70px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);background:var(--surface);outline:none;text-align:center;transition:border-color .15s;}
-  input[type=number]:focus{border-color:var(--blue);}
-  input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--blue);flex-shrink:0;}
-  .dropzone{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:2rem 1rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;}
-  .dropzone:hover,.dropzone.over{background:var(--bg);border-color:var(--blue);}
-  .dropzone p{font-size:14px;color:var(--text-2);margin-bottom:4px;}
-  .dropzone small{font-size:12px;color:var(--text-3);}
-  .file-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
-  .file-item{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--radius-sm);padding:8px 12px;}
-  .file-pill{background:var(--blue-bg);color:var(--blue-text);font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:3px 7px;border-radius:4px;flex-shrink:0;}
-  .file-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .file-size{font-size:12px;color:var(--text-3);}
-  .btn-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;align-items:center;}
-  button{font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;border-radius:var(--radius-sm);padding:0 16px;height:36px;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:background .12s;white-space:nowrap;}
-  button:hover{background:var(--bg);}
-  button:disabled{opacity:.4;cursor:not-allowed;}
-  button.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
-  button.primary:hover:not(:disabled){background:#1440b5;}
-  button.success{background:var(--green);color:#fff;border-color:var(--green);}
-  button.success:hover:not(:disabled){background:#155f30;}
-  button.danger{color:var(--red-text);border-color:#f3c4bf;font-size:12px;height:28px;padding:0 10px;}
-  button.danger:hover{background:var(--red-bg);}
-  .progress-wrap{margin-top:10px;display:none;}
-  .progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
-  .progress-fill{height:3px;background:var(--blue);border-radius:2px;transition:width .4s;}
-  .progress-txt{font-size:12px;color:var(--text-2);margin-top:5px;}
-  .spin{display:inline-block;width:11px;height:11px;border:2px solid #bbd0f7;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
-  @keyframes spin{to{transform:rotate(360deg);}}
-  .tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap;}
-  .tab-btn{font-size:13px;padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);transition:all .12s;}
-  .tab-btn:hover{background:var(--bg);}
-  .tab-btn.active{background:var(--surface);color:var(--text);border-color:var(--border-strong);font-weight:500;}
-  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem;}
-  .stat-box{background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;}
-  .stat-lbl{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-  .stat-val{font-size:24px;font-weight:300;color:var(--text);font-family:'DM Mono',monospace;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th{text-align:left;padding:6px 8px;color:var(--text-2);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
-  td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
-  tr:last-child td{border-bottom:none;}
-  tr:hover td{background:var(--bg);}
-  .td-mono{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-2);}
-  .td-bold{font-weight:500;}
-  .td-dim{color:var(--text-3);}
-  .td-green{font-weight:500;color:var(--green);}
-  .divider{border:none;border-top:1px solid var(--border);margin:1rem 0;}
-  .retur-row{transition:background .1s;}
-  .retur-row.checked td{background:#f0faf4;}
-  .retur-row.checked td:first-child{border-left:3px solid var(--green);}
-  .retur-row:not(.checked){opacity:1;}
-  .retur-qty-cell{display:flex;align-items:center;gap:8px;}
-  .max-lbl{font-size:11px;color:var(--text-3);}
-  .note-input{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);outline:none;}
-  .note-input:focus{border-color:var(--blue);}
-  .chat-msgs{display:flex;flex-direction:column;gap:10px;min-height:60px;}
-  .msg{display:flex;gap:10px;}
-  .msg-user{justify-content:flex-end;}
-  .bubble{padding:9px 13px;font-size:14px;line-height:1.55;max-width:85%;border-radius:var(--radius);}
-  .msg-ai .bubble{background:var(--bg);border-radius:0 var(--radius) var(--radius) var(--radius);}
-  .msg-user .bubble{background:var(--blue);color:#fff;border-radius:var(--radius) 0 var(--radius) var(--radius);}
-  .avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--blue-text);flex-shrink:0;margin-top:2px;font-family:'DM Mono',monospace;}
-  .chat-input-row{display:flex;gap:8px;margin-top:12px;}
-  .chat-input-row input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;margin-bottom:0;}
-  .chat-input-row input:focus{border-color:var(--blue);}
-  .ord-block{margin-bottom:20px;}
-  .hl{background:#fff3b0;border-radius:2px;padding:0 1px;}
-  .row-hidden{display:none;}
-  .ord-block:last-child{margin-bottom:0;}
-  .ord-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:8px;}
-  .sag-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;cursor:pointer;transition:all .12s;}
-  .sag-card:hover{border-color:var(--border-strong);background:var(--bg);}
-  .sag-meta{font-size:12px;color:var(--text-2);margin-top:2px;}
-  .sag-adresse{font-size:12px;color:var(--text-3);}
-  .sag-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
-  .error-msg{color:var(--red-text);font-size:13px;margin-top:8px;padding:8px 12px;background:var(--red-bg);border-radius:var(--radius-sm);display:none;}
-  .api-hint{font-size:12px;color:var(--text-3);margin-top:4px;margin-bottom:1.25rem;}
-  .api-hint a{color:var(--blue-text);}
-  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
-  .retur-count-badge{font-size:12px;background:var(--green-bg);color:var(--green);padding:3px 10px;border-radius:99px;font-weight:500;}
-  .select-all-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);margin-bottom:10px;cursor:pointer;}
-
-  /* Fordeling pr ordre */
-  .fordeling-wrapper{margin-top:1.5rem;}
-  .fordeling-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;padding-top:1rem;border-top:1px solid var(--border);}
-  .fordeling-subtitle{font-size:12px;color:var(--text-2);margin-bottom:12px;}
-  .ordre-fordeling-card{border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
-  .ordre-fordeling-card:last-child{margin-bottom:0;}
-  .ordre-fordeling-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
-  .ordre-nr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text);}
-  .ordre-dato{font-size:12px;color:var(--text-3);}
-  .ordre-total-badge{font-size:11px;background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:99px;font-weight:500;}
-  .ordre-fordeling-table{width:100%;}
-  .ordre-fordeling-table td{padding:6px 12px;border-bottom:1px solid var(--border);font-size:13px;}
-  .ordre-fordeling-table tr:last-child td{border-bottom:none;}
-  .ingen-retur{padding:8px 12px;font-size:12px;color:var(--text-3);font-style:italic;}
-  .sum-footer{display:flex;gap:16px;padding:10px 14px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:13px;color:var(--green);font-weight:500;margin-top:12px;}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#f5f3ef;--surface:#fff;--border:#e2ddd8;--border-strong:#c8c2bb;--text:#1a1815;--text-2:#6b6560;--text-3:#9e9890;--blue:#1a4fd6;--blue-bg:#eef2fd;--blue-text:#1a4fd6;--green:#1a7a3c;--green-bg:#edf7f0;--green-light:#c8edd3;--red-bg:#fdf0ef;--red-text:#c0392b;--amber-bg:#fdf7ed;--amber:#9a6800;--radius:10px;--radius-sm:6px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem;font-size:14px;}
+.container{max-width:860px;margin:0 auto;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
+.field-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:6px;display:block;}
+input[type=text],input[type=password]{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;margin-bottom:1.25rem;}
+input[type=text]:focus,input[type=password]:focus{border-color:var(--blue);}
+input[type=number]{width:70px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);background:var(--surface);outline:none;text-align:center;}
+input[type=number]:focus{border-color:var(--blue);}
+input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--blue);flex-shrink:0;}
+.dropzone{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:2rem 1rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;}
+.dropzone:hover,.dropzone.over{background:var(--bg);border-color:var(--blue);}
+.dropzone p{font-size:14px;color:var(--text-2);margin-bottom:4px;}
+.dropzone small{font-size:12px;color:var(--text-3);}
+.file-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+.file-item{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--radius-sm);padding:8px 12px;}
+.file-pill{background:var(--blue-bg);color:var(--blue-text);font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:3px 7px;border-radius:4px;flex-shrink:0;}
+.file-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-size{font-size:12px;color:var(--text-3);}
+.btn-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;align-items:center;}
+button{font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;border-radius:var(--radius-sm);padding:0 16px;height:36px;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:background .12s;white-space:nowrap;}
+button:hover{background:var(--bg);}
+button:disabled{opacity:.4;cursor:not-allowed;}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+button.primary:hover:not(:disabled){background:#1440b5;}
+button.success{background:var(--green);color:#fff;border-color:var(--green);}
+button.success:hover:not(:disabled){background:#155f30;}
+button.danger{color:var(--red-text);border-color:#f3c4bf;font-size:12px;height:28px;padding:0 10px;}
+button.danger:hover{background:var(--red-bg);}
+.progress-wrap{margin-top:10px;display:none;}
+.progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:3px;background:var(--blue);border-radius:2px;transition:width .4s;}
+.progress-txt{font-size:12px;color:var(--text-2);margin-top:5px;}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid #bbd0f7;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap;}
+.tab-btn{font-size:13px;padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);transition:all .12s;}
+.tab-btn:hover{background:var(--bg);}
+.tab-btn.active{background:var(--surface);color:var(--text);border-color:var(--border-strong);font-weight:500;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem;}
+.stat-box{background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;}
+.stat-lbl{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.stat-val{font-size:24px;font-weight:300;font-family:'DM Mono',monospace;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:6px 8px;color:var(--text-2);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg);}
+.td-mono{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-2);}
+.td-bold{font-weight:500;}
+.td-dim{color:var(--text-3);}
+.td-green{font-weight:500;color:var(--green);}
+.td-pos{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-3);font-weight:500;}
+.divider{border:none;border-top:1px solid var(--border);margin:1rem 0;}
+.retur-row{transition:background .1s;}
+.retur-row.checked td{background:#f0faf4;}
+.retur-row.checked td:first-child{border-left:3px solid var(--green);}
+.retur-row:not(.checked){opacity:1;}
+.retur-qty-cell{display:flex;align-items:center;gap:8px;}
+.max-lbl{font-size:11px;color:var(--text-3);}
+.note-input{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);outline:none;}
+.note-input:focus{border-color:var(--blue);}
+.chat-msgs{display:flex;flex-direction:column;gap:10px;min-height:60px;}
+.msg{display:flex;gap:10px;}
+.msg-user{justify-content:flex-end;}
+.bubble{padding:9px 13px;font-size:14px;line-height:1.55;max-width:85%;border-radius:var(--radius);}
+.msg-ai .bubble{background:var(--bg);border-radius:0 var(--radius) var(--radius) var(--radius);}
+.msg-user .bubble{background:var(--blue);color:#fff;border-radius:var(--radius) 0 var(--radius) var(--radius);}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--blue-text);flex-shrink:0;margin-top:2px;font-family:'DM Mono',monospace;}
+.chat-input-row{display:flex;gap:8px;margin-top:12px;}
+.chat-input-row input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;margin-bottom:0;}
+.chat-input-row input:focus{border-color:var(--blue);}
+.ord-block{margin-bottom:20px;}
+.ord-block:last-child{margin-bottom:0;}
+.ord-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.error-msg{color:var(--red-text);font-size:13px;margin-top:8px;padding:8px 12px;background:var(--red-bg);border-radius:var(--radius-sm);display:none;}
+.api-hint{font-size:12px;color:var(--text-3);margin-top:4px;margin-bottom:1.25rem;}
+.api-hint a{color:var(--blue-text);}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
+.retur-count-badge{font-size:12px;background:var(--green-bg);color:var(--green);padding:3px 10px;border-radius:99px;font-weight:500;}
+.fordeling-wrapper{margin-top:1.5rem;}
+.fordeling-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;padding-top:1rem;border-top:1px solid var(--border);}
+.fordeling-subtitle{font-size:12px;color:var(--text-2);margin-bottom:12px;}
+.ordre-fordeling-card{border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
+.ordre-fordeling-card:last-child{margin-bottom:0;}
+.ordre-fordeling-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
+.ordre-nr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text);}
+.ordre-dato{font-size:12px;color:var(--text-3);}
+.ordre-total-badge{font-size:11px;background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:99px;font-weight:500;}
+.ordre-fordeling-table{width:100%;}
+.ordre-fordeling-table td{padding:6px 12px;border-bottom:1px solid var(--border);font-size:13px;}
+.ordre-fordeling-table tr:last-child td{border-bottom:none;}
+.ingen-retur{padding:8px 12px;font-size:12px;color:var(--text-3);font-style:italic;}
+.sum-footer{display:flex;gap:16px;padding:10px 14px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:13px;color:var(--green);font-weight:500;margin-top:12px;}
+.row-hidden{display:none;}
 </style>
 </head>
 <body>
 <div class="container">
   <div id="top-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
     <div style="display:flex;align-items:center;gap:10px;">
-      <div style="width:28px;height:28px;background:#eef2fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#1a4fd6;font-family:'DM Mono',monospace;">BD</div>
+      <div style="width:28px;height:28px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--blue-text);font-family:'DM Mono',monospace;">BD</div>
       <span style="font-size:13px;color:var(--text-2);" id="top-email"></span>
-      <span id="top-plan" style="font-size:11px;padding:2px 8px;border-radius:99px;background:#edf7f0;color:#1a7a3c;font-weight:500;"></span>
+      <span id="top-plan" style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--green-bg);color:var(--green);font-weight:500;"></span>
     </div>
-    <button onclick="logout()" style="font-size:12px;height:28px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text-2);cursor:pointer;">Log ud</button>
+    <button onclick="logout()" style="font-size:12px;height:28px;padding:0 12px;">Log ud</button>
   </div>
-  <header>
-    <div class="bd-logo">BD</div>
-    <h1>Retur-assistent</h1>
-    <span>Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</span>
+
+  <header style="display:flex;align-items:baseline;gap:12px;margin-bottom:2rem;">
+    <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;background:var(--text);color:#fff;padding:4px 10px;border-radius:var(--radius-sm);">BD</div>
+    <h1 style="font-size:20px;font-weight:500;letter-spacing:-.3px;">Retur-assistent</h1>
+    <span style="font-size:13px;color:var(--text-2);">Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</span>
   </header>
 
-  <!-- SAGSMAPPER VIEW -->
-  <div id="view-sager" style="display:none;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;">
-      <input type="text" id="sag-soeg" placeholder="🔍  Søg på sagsnr. eller kundenavn..." oninput="filterSager(this.value)" style="flex:1;max-width:360px;margin-bottom:0;"/>
-      <span id="sag-soeg-count" style="font-size:12px;color:var(--text-2);"></span>
-      <button class="btn btn-p" onclick="visUpload()" style="margin-left:auto;flex-shrink:0;">+ Ny analyse</button>
-    </div>
-    <span class="lbl">Dine sager</span>
-    <div id="sag-liste" style="display:flex;flex-direction:column;gap:8px;"></div>
-  </div>
-
-  <!-- UPLOAD VIEW -->
-  <div id="view-upload">
-    <div id="upload-tilbage" style="display:none;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);">
-      <button class="btn" onclick="visMapper()">← Tilbage til sagsoversigt</button>
-    </div>
-  <div class="card" id="upload-card">
+  <div class="card">
     <label class="field-lbl">Sagsnummer</label>
     <input type="text" id="case-num" placeholder="f.eks. 255560-CR" style="max-width:300px;"/>
     <label class="field-lbl">Følgeseddel-PDF'er fra SAP</label>
@@ -172,27 +137,22 @@
       <div class="progress-txt" id="pt"></div>
     </div>
     <div class="btn-row">
-      <button class="primary" id="gb" onclick="grupperOgVis()" disabled>Gruppér og analyser</button>
-      <button class="primary" id="ab" onclick="go()" disabled style="display:none;">Analyser ordrer</button>
+      <button class="primary" id="ab" onclick="go()" disabled>Analyser ordrer</button>
       <button onclick="clearAll()">Ryd alt</button>
     </div>
   </div>
 
-  </div><!-- /view-upload -->
-
-  <!-- Retur editor -->
   <div id="retur-editor" style="display:none;">
     <div class="card">
       <div class="section-header">
         <h3 style="font-size:15px;font-weight:500;">Angiv antal retur</h3>
         <span class="retur-count-badge" id="retur-badge">0 varer valgt</span>
       </div>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Vælg varer og angiv antal retur. Botten fordeler automatisk på de rigtige ordrenumre.</p>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-        <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..." oninput="filterRetur(this.value)" style="max-width:320px;margin-bottom:0;" />
-        <span id="soeg-count" style="font-size:12px;color:var(--text-3);"></span>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Skriv antal retur ud for de varer der skal tilbage — rækken markeres automatisk.</p>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">
+        <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..." oninput="filterRetur(this.value)" style="max-width:320px;margin-bottom:8px;"/>
+        <span id="soeg-count" style="font-size:12px;color:var(--text-3);margin-left:8px;"></span>
       </div>
-      <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Skriv antal i feltet ud for de varer der skal retur — rækken markeres automatisk.</div>
       <div style="overflow-x:auto;">
         <table id="retur-table">
           <thead><tr>
@@ -213,9 +173,7 @@
     </div>
   </div>
 
-  <!-- Resultater -->
   <div id="results" style="display:none;">
-    <div class="divider" style="margin:0 0 1rem 0;"></div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
       <input type="text" id="global-search" placeholder="🔍  Søg på materiale eller varenr..." oninput="globalFilter(this.value)" style="max-width:360px;margin-bottom:0;"/>
       <span id="global-search-count" style="font-size:12px;color:var(--text-3);"></span>
@@ -227,24 +185,20 @@
       <button class="tab-btn" onclick="sw('r',this)">Returliste</button>
       <button class="tab-btn" onclick="sw('c',this)">Spørg AI</button>
     </div>
-
     <div id="t-o" class="card">
       <div class="stats-row" id="stats"></div>
       <div id="o-tbl"></div>
       <div class="divider"></div>
       <button class="primary" onclick="visReturEditor()">Angiv antal retur</button>
     </div>
-
     <div id="t-d" class="card" style="display:none;"><div id="d-content"></div></div>
-
     <div id="t-r" class="card" style="display:none;">
       <div id="r-content"><p style="font-size:13px;color:var(--text-2);">Tryk "Angiv antal retur" og generer returliste for at se den her.</p></div>
     </div>
-
     <div id="t-c" class="card" style="display:none;">
       <div class="chat-msgs" id="chat"></div>
       <div class="chat-input-row">
-        <input type="text" id="ci" placeholder="Spørg f.eks. 'Hvilken ordre har flest retur?'" onkeydown="if(event.key==='Enter')doChat()"/>
+        <input type="text" id="ci" placeholder="Spørg om sagen..." onkeydown="if(event.key==='Enter')doChat()"/>
         <button class="primary" onclick="doChat()">Send</button>
       </div>
     </div>
@@ -252,350 +206,75 @@
 </div>
 
 <script>
-// ── Auth check — send til login hvis ikke logget ind ──
-(function checkLogin() {
-  const token = localStorage.getItem('bd_token');
-  if (!token) { window.location.href = 'login.html'; return; }
-  const email = localStorage.getItem('bd_email') || '';
-  let plan = 'pro';
-  try { const d = JSON.parse(atob(token)); plan = d.plan || 'pro'; } catch {}
-  document.addEventListener('DOMContentLoaded', () => {
-    const el = document.getElementById('top-email');
-    const pl = document.getElementById('top-plan');
-    if (el) el.textContent = email;
-    if (pl) { pl.textContent = plan.charAt(0).toUpperCase() + plan.slice(1); }
+// ── Auth ──
+(function(){
+  const token=localStorage.getItem('bd_token');
+  if(!token){window.location.href='/login';return;}
+  const email=localStorage.getItem('bd_email')||'';
+  let plan='pro';
+  try{const d=JSON.parse(atob(token));plan=d.plan||'pro';}catch{}
+  document.addEventListener('DOMContentLoaded',()=>{
+    const el=document.getElementById('top-email');
+    const pl=document.getElementById('top-plan');
+    if(el)el.textContent=email;
+    if(pl){pl.textContent=plan.charAt(0).toUpperCase()+plan.slice(1);}
   });
 })();
+function logout(){localStorage.removeItem('bd_token');localStorage.removeItem('bd_email');window.location.href='/login';}
+function getApiKey(){return localStorage.getItem('bd_token')||'';}
 
-function logout() {
-  localStorage.removeItem('bd_token');
-  localStorage.removeItem('bd_email');
-  window.location.href = 'login.html';
+// ── Session ──
+const SESSION_KEY='bd_session';
+async function gemSession(){
+  if(!parsed)return;
+  const session={caseNum:document.getElementById('case-num')?.value||'',parsed,returData,ts:Date.now()};
+  localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  try{
+    const token=getApiKey();
+    if(token)await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({session})});
+  }catch{}
 }
-
-function getApiKey() {
-  return localStorage.getItem('bd_token') || '';
-}
-
-// ── GEM OG GENDAN SESSION ────────────────────────────────
-const SESSION_KEY = 'bd_session';
-
-async function gemSession() {
-  if (!parsed) return;
-  const session = {
-    caseNum: document.getElementById('case-num')?.value || '',
-    parsed,
-    returData,
-    ts: Date.now()
-  };
-  // Gem lokalt først (øjeblikkelig)
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  // Gem også på server (på tværs af enheder)
-  try {
-    const token = getApiKey();
-    if (token) {
-      await fetch('/api/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ session })
-      });
+async function genopretSession(){
+  if(parsed)return;
+  try{
+    const token=getApiKey();
+    if(token){
+      const resp=await fetch('/api/session',{headers:{'Authorization':'Bearer '+token}});
+      if(resp.ok){const data=await resp.json();if(data.session?.parsed){indlaesSession(data.session);return;}}
     }
-  } catch(e) { console.log('Server-gem fejlede:', e.message); }
-}
-
-async function genopretSession() {
-  if (parsed) return;
-  // Prøv server først
-  try {
-    const token = getApiKey();
-    if (token) {
-      const resp = await fetch('/api/session', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.session?.parsed) {
-          indlaesSession(data.session);
-          return;
-        }
-      }
-    }
-  } catch(e) { console.log('Server-session fejlede, prøver lokal:', e.message); }
-
-  // Fallback: lokal localStorage
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return;
-    const session = JSON.parse(raw);
-    if (!session?.parsed) return;
-    if (Date.now() - session.ts > 7 * 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(SESSION_KEY);
-      return;
-    }
+  }catch{}
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);
+    if(!raw)return;
+    const session=JSON.parse(raw);
+    if(!session?.parsed)return;
+    if(Date.now()-session.ts>7*24*60*60*1000){localStorage.removeItem(SESSION_KEY);return;}
     indlaesSession(session);
-  } catch(e) { console.log('Lokal session fejlede:', e.message); }
+  }catch{}
 }
-
-function indlaesSession(session) {
-  parsed = session.parsed;
-  ctx = JSON.stringify(parsed);
-  returData = session.returData || [];
-  const cnEl = document.getElementById('case-num');
-  if (cnEl && session.caseNum) cnEl.value = session.caseNum;
-  if (document.getElementById('results')) {
-    renderResults(session.caseNum || '');
-    document.getElementById('results').style.display = '';
-    const chatEl = document.getElementById('chat');
-    if (chatEl) chatEl.innerHTML = '<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Session genoprettet — du kan fortsætte hvor du slap.</div></div>';
-    if (returData.length) updateBadge();
+function indlaesSession(session){
+  parsed=session.parsed;ctx=JSON.stringify(parsed);returData=session.returData||[];
+  const cnEl=document.getElementById('case-num');
+  if(cnEl&&session.caseNum)cnEl.value=session.caseNum;
+  if(document.getElementById('results')){
+    renderResults(session.caseNum||'');
+    document.getElementById('results').style.display='';
+    const chatEl=document.getElementById('chat');
+    if(chatEl)chatEl.innerHTML='<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Session genoprettet — du kan fortsætte hvor du slap.</div></div>';
+    if(returData.length)updateBadge();
   }
 }
-
-async function rydSession() {
+async function rydSession(){
   localStorage.removeItem(SESSION_KEY);
-  try {
-    const token = getApiKey();
-    if (token) {
-      await fetch('/api/session', {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-    }
-  } catch(e) {}
+  try{const token=getApiKey();if(token)await fetch('/api/session',{method:'DELETE',headers:{'Authorization':'Bearer '+token}});}catch{}
 }
 
-let files=[], parsed=null, ctx='', returData=[];
-let alleSager = []; // Alle grupperede sager
-let aktivSagData = null; // Den sag brugeren arbejder på
+// ── State ──
+let files=[],parsed=null,ctx='',returData=[];
+let soegTerm='',globalSearchTerm='';
 
-// ── SAGSMAPPER ──────────────────────────────────────────
-function visMapper() {
-  document.getElementById('view-sager').style.display = '';
-  document.getElementById('view-upload').style.display = 'none';
-  document.getElementById('results').style.display = 'none';
-  document.getElementById('retur-editor').style.display = 'none';
-  renderSagListe();
-}
-
-function visUpload() {
-  document.getElementById('view-sager').style.display = 'none';
-  document.getElementById('view-upload').style.display = '';
-  document.getElementById('upload-tilbage').style.display = alleSager.length > 0 ? '' : 'none';
-}
-
-function renderSagListe() {
-  const el = document.getElementById('sag-liste');
-  if (!alleSager.length) {
-    el.innerHTML = `<div style="text-align:center;padding:2.5rem;color:var(--text-2);font-size:14px;">
-      <div style="font-size:32px;margin-bottom:12px;">📂</div>
-      <div style="font-weight:500;color:var(--text);margin-bottom:6px;">Ingen sager endnu</div>
-      <div style="font-size:13px;margin-bottom:16px;">Tryk på "+ Upload nye PDF'er" øverst til højre for at komme i gang</div>
-    </div>`;
-    return;
-  }
-  el.innerHTML = alleSager.map((sag, i) => `
-    <div class="sag-card" data-sag="${sag.sagsnr.toLowerCase()}" data-kunde="${(sag.kunde||'').toLowerCase()}" style="display:flex;align-items:center;gap:10px;">
-      <div style="flex:1;" onclick="aabSag(${i})" style="cursor:pointer;">
-        <div style="font-size:15px;font-weight:500;">${sag.sagsnr}</div>
-        <div class="sag-meta">${sag.kunde||'Ukendt kunde'}</div>
-        ${sag.varianter && sag.varianter.length > 1 ? `<div class="sag-adresse" style="margin-top:2px;">${sag.varianter.join(' · ')}</div>` : ''}
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        <span class="badge b-blue" style="pointer-events:none;">${sag.ordrer.length} ordre${sag.ordrer.length !== 1 ? 'r' : ''}</span>
-        <button onclick="sletSag(event,${i})" style="font-size:12px;height:28px;padding:0 10px;color:var(--red-text);border-color:#f3c4bf;background:transparent;" title="Slet sag">Slet</button>
-      </div>
-    </div>`).join('');
-}
-
-function filterSager(val) {
-  const term = val.toLowerCase().trim();
-  const cards = document.querySelectorAll('.sag-card');
-  let vis = 0;
-  cards.forEach(card => {
-    const sag = card.dataset.sag || '';
-    const kunde = card.dataset.kunde || '';
-    const match = !term || sag.includes(term) || kunde.includes(term);
-    card.style.display = match ? '' : 'none';
-    if (match) vis++;
-  });
-  const count = document.getElementById('sag-soeg-count');
-  if (count) count.textContent = term ? `${vis} sag${vis !== 1 ? 'er' : ''} fundet` : '';
-}
-
-function sletSag(e, i) {
-  e.stopPropagation();
-  const sag = alleSager[i];
-  if (!confirm(`Slet sag ${sag.sagsnr}?\n\nDette sletter mappen og al gemt data for sagen.`)) return;
-  // Slet session for denne sag
-  localStorage.removeItem('bd_session_' + sag.sagsnr);
-  // Fjern fra liste
-  alleSager.splice(i, 1);
-  localStorage.setItem('bd_alle_sager', JSON.stringify(alleSager));
-  // Ryd analyseret data hvis det var denne sag
-  if (parsed && document.getElementById('case-num')?.value === sag.sagsnr) {
-    parsed = null; ctx = ''; returData = [];
-    document.getElementById('results').style.display = 'none';
-  }
-  renderSagListe();
-}
-
-function aabSag(i) {
-  const sag = alleSager[i];
-  aktivSagData = sag;
-  // Sæt sagsnummer
-  const cnEl = document.getElementById('case-num');
-  if (cnEl) cnEl.value = sag.sagsnr;
-  // Skjul sager, vis app
-  document.getElementById('view-sager').style.display = 'none';
-  document.getElementById('view-upload').style.display = '';
-  document.getElementById('upload-tilbage').style.display = '';
-  // Hvis sagen har analyseret data i session, genopret
-  const sessionKey = 'bd_session_' + sag.sagsnr;
-  try {
-    const raw = localStorage.getItem(sessionKey);
-    if (raw) {
-      const session = JSON.parse(raw);
-      if (session?.parsed) {
-        indlaesSession(session);
-        return;
-      }
-    }
-  } catch {}
-  // Ellers vis upload
-  document.getElementById('results').style.display = 'none';
-}
-
-async function grupperOgVis() {
-  const apiKey = getApiKey();
-  if (!apiKey) { showErr('Log ind igen.'); return; }
-  if (!files.length) return;
-
-  const btn = document.getElementById('gb');
-  btn.disabled = true;
-  document.getElementById('err').style.display = 'none';
-  document.getElementById('results').style.display = 'none';
-
-  setP(5, '<span class="spin"></span>Læser sagsnumre fra PDF\'erne...');
-
-  const pdfs = [];
-  for (let i = 0; i < files.length; i++) {
-    setP(5 + Math.round(i / files.length * 30), `<span class="spin"></span>Indlæser ${files[i].name}...`);
-    try { const data = await b64(files[i]); pdfs.push({ name: files[i].name, data }); } catch {}
-  }
-
-  setP(38, '<span class="spin"></span>Finder sagsnumre og grupperer...');
-
-  try {
-    const resp = await fetch('/api/grupper', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ pdfs })
-    });
-    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || `HTTP ${resp.status}`); }
-    const result = await resp.json();
-    const nyeSager = result.sager || [];
-
-    setP(70, '<span class="spin"></span>Opdaterer sagsliste...');
-
-    // Gem PDF-data til senere analyse
-    window._pdfCache = {};
-    for (const pdf of pdfs) window._pdfCache[pdf.name] = pdf.data;
-
-    // Flet sager
-    for (const sag of nyeSager) {
-      const idx = alleSager.findIndex(s => s.sagsnr === sag.sagsnr);
-      if (idx >= 0) {
-        for (const ord of sag.ordrer) {
-          if (!alleSager[idx].ordrer.find(o => o.ordrenr === ord.ordrenr)) alleSager[idx].ordrer.push(ord);
-        }
-        if (sag.kunde && !alleSager[idx].kunde) alleSager[idx].kunde = sag.kunde;
-        if (!alleSager[idx].filer) alleSager[idx].filer = [];
-        for (const ord of sag.ordrer) {
-          if (ord.filnavn && !alleSager[idx].filer.includes(ord.filnavn)) alleSager[idx].filer.push(ord.filnavn);
-        }
-      } else {
-        sag.filer = sag.ordrer.map(o => o.filnavn).filter(Boolean);
-        alleSager.push(sag);
-      }
-    }
-    localStorage.setItem('bd_alle_sager', JSON.stringify(alleSager));
-
-    setP(100, `Fandt ${nyeSager.length} sag${nyeSager.length !== 1 ? 'er' : ''} ✓`);
-    setTimeout(() => document.getElementById('pw').style.display = 'none', 800);
-    btn.disabled = false;
-
-    if (nyeSager.length === 1) {
-      // Én sag — gå direkte til analyse
-      const cnEl = document.getElementById('case-num');
-      if (cnEl) cnEl.value = nyeSager[0].sagsnr;
-      go();
-    } else if (nyeSager.length > 1) {
-      visMapper();
-    } else {
-      showErr('Ingen sagsnumre fundet. Skriv sagsnummer manuelt og tryk Analyser.');
-      document.getElementById('ab').style.display = '';
-      btn.disabled = false;
-    }
-  } catch(e) {
-    showErr('Fejl: ' + e.message);
-    btn.disabled = false;
-    document.getElementById('pw').style.display = 'none';
-  }
-}
-
-async function grupperPDFer(pdfListe) {
-  const apiKey = getApiKey();
-  if (!apiKey) return;
-  // Send til grupper-API
-  const BATCH = 5;
-  const nyeSager = {};
-  for (let b = 0; b < Math.ceil(pdfListe.length / BATCH); b++) {
-    const batch = pdfListe.slice(b * BATCH, (b + 1) * BATCH);
-    const pdfs = [];
-    for (const f of batch) {
-      try {
-        const data = await b64(f);
-        pdfs.push({ name: f.name, data });
-      } catch {}
-    }
-    try {
-      const resp = await fetch('/api/grupper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-        body: JSON.stringify({ pdfs })
-      });
-      if (resp.ok) {
-        const result = await resp.json();
-        for (const sag of result.sager || []) {
-          if (!nyeSager[sag.sagsnr]) nyeSager[sag.sagsnr] = { ...sag, ordrer: [] };
-          for (const ord of sag.ordrer) {
-            if (!nyeSager[sag.sagsnr].ordrer.find(o => o.ordrenr === ord.ordrenr)) {
-              nyeSager[sag.sagsnr].ordrer.push(ord);
-            }
-          }
-          if (sag.kunde && !nyeSager[sag.sagsnr].kunde) nyeSager[sag.sagsnr].kunde = sag.kunde;
-        }
-      }
-    } catch (e) { console.error('Gruppering fejl:', e); }
-  }
-  // Flet med eksisterende sager
-  for (const sagsnr of Object.keys(nyeSager)) {
-    const idx = alleSager.findIndex(s => s.sagsnr === sagsnr);
-    if (idx >= 0) {
-      // Opdater eksisterende
-      for (const ord of nyeSager[sagsnr].ordrer) {
-        if (!alleSager[idx].ordrer.find(o => o.ordrenr === ord.ordrenr)) {
-          alleSager[idx].ordrer.push(ord);
-        }
-      }
-    } else {
-      alleSager.push(nyeSager[sagsnr]);
-    }
-  }
-  localStorage.setItem('bd_alle_sager', JSON.stringify(alleSager));
-}
-
-const dz=document.getElementById('dz'), fi=document.getElementById('fi');
+// ── Drag & drop ──
+const dz=document.getElementById('dz'),fi=document.getElementById('fi');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
 dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
@@ -607,10 +286,9 @@ function addFiles(list){
       files.push(f);
   renderFiles();
   document.getElementById('ab').disabled=files.length===0;
-  document.getElementById('gb').disabled=files.length===0;
   document.getElementById('err').style.display='none';
 }
-function removeFile(i){files.splice(i,1);renderFiles();document.getElementById('ab').disabled=files.length===0;document.getElementById('gb').disabled=files.length===0;}
+function removeFile(i){files.splice(i,1);renderFiles();document.getElementById('ab').disabled=files.length===0;}
 function renderFiles(){
   document.getElementById('file-list').innerHTML=files.map((f,i)=>`
     <div class="file-item">
@@ -622,98 +300,77 @@ function renderFiles(){
 }
 function clearAll(){
   files=[];parsed=null;ctx='';returData=[];
-  rydSession();
-  if(alleSager.length>0){visMapper();return;}
   renderFiles();
   document.getElementById('ab').disabled=true;
-  document.getElementById('gb').disabled=true;
-  ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('results').style.display='none';
+  document.getElementById('retur-editor').style.display='none';
   document.getElementById('pw').style.display='none';
   document.getElementById('err').style.display='none';
+  rydSession();
 }
 function setP(pct,txt){document.getElementById('pw').style.display='block';document.getElementById('pb').style.width=pct+'%';document.getElementById('pt').innerHTML=txt;}
 function showErr(msg){const el=document.getElementById('err');el.textContent=msg;el.style.display='block';document.getElementById('pw').style.display='none';}
 function b64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
 
+// ── Analyse ──
 async function go(){
   const apiKey=getApiKey();
-  if(!apiKey){window.location.href='login.html';return;}
+  if(!apiKey){window.location.href='/login';return;}
   const btn=document.getElementById('ab');
   btn.disabled=true;
-  ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('results').style.display='none';
+  document.getElementById('retur-editor').style.display='none';
   document.getElementById('err').style.display='none';
   const caseNum=document.getElementById('case-num').value.trim()||'ukendt';
-  // Bundter af 5 PDF'er for at undgå token-grænser
-  const BATCH_SIZE = 5;
-  const alleOrdrer = [];
-  const totalBatches = Math.ceil(files.length / BATCH_SIZE);
-
-  for(let b = 0; b < totalBatches; b++){
-    const batchFiles = files.slice(b * BATCH_SIZE, (b+1) * BATCH_SIZE);
-    const pct = Math.round((b / totalBatches) * 78);
-    setP(10 + pct, `<span class="spin"></span>Analyserer ${b+1} af ${totalBatches} bundter (${(b)*BATCH_SIZE+1}–${Math.min((b+1)*BATCH_SIZE, files.length)} af ${files.length} filer)...`);
-
-    const content = [];
+  const BATCH_SIZE=5;
+  const alleOrdrer=[];
+  const totalBatches=Math.ceil(files.length/BATCH_SIZE);
+  for(let b=0;b<totalBatches;b++){
+    const batchFiles=files.slice(b*BATCH_SIZE,(b+1)*BATCH_SIZE);
+    const pct=Math.round((b/totalBatches)*78);
+    setP(10+pct,`<span class="spin"></span>Analyserer ${b+1} af ${totalBatches} bundter (${b*BATCH_SIZE+1}–${Math.min((b+1)*BATCH_SIZE,files.length)} af ${files.length} filer)...`);
+    const content=[];
     for(const file of batchFiles){
-      try{
-        const data = await b64(file);
-        content.push({type:'document', source:{type:'base64', media_type:'application/pdf', data}, title:file.name});
-      }catch(e){ console.error('Fil fejl:', file.name); }
+      try{const data=await b64(file);content.push({type:'document',source:{type:'base64',media_type:'application/pdf',data},title:file.name});}
+      catch(e){console.error(e);}
     }
-    if(!content.length) continue;
-
-    content.push({type:'text', text:`Sagsnummer: ${caseNum}\nUdtrækker ALLE varelinjer fra disse SAP-følgesedler.\nReturner KUN JSON:\n{"ordrer":[{"ordrenr":"<nr>","dato":"<dd-mm-yy>","linjer":[{"varenr":"<nr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`});
-
-    let forsøg = 0;
-    while(forsøg < 3){
+    if(!content.length)continue;
+    content.push({type:'text',text:`Sagsnummer: ${caseNum}
+Udtrækker ALLE varelinjer fra SAP-dokumenterne.
+VIGTIGT: Brug KUN ordrenumre der starter med 1010 eller 300. IGNORER fakturanumre der starter med 111.
+IGNORER alle varelinjer under sektionen "Leveres fra et andet lager".
+For kreditnotaer skal antal være negativt. Inkluder pos.-nummeret (003, 006 osv.).
+Returner KUN JSON:
+{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":"<003>","varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`});
+    let forsøg=0;
+    while(forsøg<3){
       try{
-        const resp = await fetch('/api/analyse',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-          body:JSON.stringify({
-            pdfs: content.filter(c=>c.type==='document').map(c=>({name:c.title,data:c.source.data})),
-            caseNum
-          })
-        });
-
-        if(resp.status === 429){
-          const ventetid = (forsøg+1) * 15000;
-          setP(10+pct, `<span class="spin"></span>Rate limit — venter ${ventetid/1000} sek...`);
-          await new Promise(r => setTimeout(r, ventetid));
-          forsøg++; continue;
-        }
-
-        if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${resp.status}`);}
-
-        const result = await resp.json();
-        if(result.error) throw new Error(result.error);
-        const batchParsed = result.data;
-        if(batchParsed?.ordrer) alleOrdrer.push(...batchParsed.ordrer);
-        // Pause mellem batches
-        if(b < totalBatches-1) await new Promise(r => setTimeout(r, 1200));
+        const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({pdfs:content.filter(c=>c.type==='document').map(c=>({name:c.title,data:c.source.data})),caseNum})});
+        if(resp.status===429){setP(10+pct,`<span class="spin"></span>Rate limit — venter...`);await new Promise(r=>setTimeout(r,(forsøg+1)*15000));forsøg++;continue;}
+        if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
+        const result=await resp.json();
+        if(result.error)throw new Error(result.error);
+        const batchParsed=result.data;
+        if(batchParsed?.ordrer)alleOrdrer.push(...batchParsed.ordrer);
+        if(b<totalBatches-1)await new Promise(r=>setTimeout(r,1200));
         break;
-
-      }catch(e){
-        if(forsøg >= 2){ showErr('Fejl i batch '+(b+1)+': '+e.message); btn.disabled=false; return; }
-        forsøg++;
-      }
+      }catch(e){if(forsøg>=2){showErr('Fejl i batch '+(b+1)+': '+e.message);btn.disabled=false;return;}forsøg++;}
     }
   }
-
-  if(!alleOrdrer.length){ showErr('Ingen ordrer kunne læses. Prøv igen.'); btn.disabled=false; return; }
-  parsed = { ordrer: alleOrdrer };
-  ctx=JSON.stringify(parsed);
+  if(!alleOrdrer.length){showErr('Ingen ordrer kunne læses. Prøv igen.');btn.disabled=false;return;}
+  parsed={ordrer:alleOrdrer};ctx=JSON.stringify(parsed);
   setP(100,'Analyse fuldført ✓ ('+alleOrdrer.length+' ordrer)');
   setTimeout(()=>document.getElementById('pw').style.display='none',1000);
   renderResults(caseNum);
   document.getElementById('results').style.display='';
-  gemSession();
   applyGlobalFilter();
+  gemSession();
   document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
-  // Kør gruppering i baggrunden så sagslisten holdes opdateret
-  grupperPDFer([...files]).catch(()=>{});
   btn.disabled=false;
 }
+
+// ── Totals & render ──
+function matchWords(text,term){if(!term)return true;return term.split(/\s+/).filter(Boolean).every(w=>text.includes(w));}
 
 function getTotals(){
   if(!parsed)return{};
@@ -741,350 +398,137 @@ function renderResults(caseNum){
   renderPrOrdre();
 }
 
-let globalSearchTerm = '';
-
-function matchWords(text, term) {
-  if (!term) return true;
-  const words = term.split(/\s+/).filter(Boolean);
-  return words.every(w => text.includes(w));
-}
-
-function globalFilter(val){
-  globalSearchTerm = val.toLowerCase().trim();
-  const countEl = document.getElementById('global-search-count');
-  const clearBtn = document.getElementById('clear-search-btn');
-  clearBtn.style.display = globalSearchTerm ? '' : 'none';
-
-  // Also sync retur editor search if open
-  const soegInput = document.getElementById('soeg-input');
-  if(soegInput){ soegInput.value = val; filterRetur(val); }
-
-  // Filter current active tab
-  applyGlobalFilter();
-}
-
-function clearGlobalSearch(){
-  document.getElementById('global-search').value = '';
-  globalFilter('');
-}
-
-function applyGlobalFilter(){
-  const term = globalSearchTerm;
-  const countEl = document.getElementById('global-search-count');
-
-  // ── Oversigt tab ──
-  const oRows = document.querySelectorAll('#o-tbl tbody tr');
-  let oVis = 0;
-  oRows.forEach(row => {
-    const txt = row.textContent.toLowerCase();
-    const match = !term || matchWords(txt, term);
-    row.classList.toggle('row-hidden', !match);
-    if(match) oVis++;
-  });
-
-  // ── Pr. ordre tab ──
-  const dRows = document.querySelectorAll('#d-content tbody tr');
-  let dVis = 0;
-  dRows.forEach(row => {
-    const txt = row.textContent.toLowerCase();
-    const match = !term || matchWords(txt, term);
-    row.classList.toggle('row-hidden', !match);
-    if(match) dVis++;
-  });
-  // Hide entire ord-block if all its rows are hidden
-  document.querySelectorAll('#d-content .ord-block').forEach(block => {
-    const visRows = block.querySelectorAll('tbody tr:not(.row-hidden)');
-    block.style.display = visRows.length === 0 && term ? 'none' : '';
-  });
-
-  // ── Returliste tab ──
-  const rRows = document.querySelectorAll('#r-content table:first-of-type tbody tr');
-  let rVis = 0;
-  rRows.forEach(row => {
-    const txt = row.textContent.toLowerCase();
-    const match = !term || matchWords(txt, term);
-    row.classList.toggle('row-hidden', !match);
-    if(match) rVis++;
-  });
-  // Also filter fordeling pr ordre in returliste
-  document.querySelectorAll('.ordre-fordeling-card').forEach(card => {
-    const rows = card.querySelectorAll('tbody tr');
-    let cardVis = 0;
-    rows.forEach(row => {
-      const txt = row.textContent.toLowerCase();
-      const match = !term || matchWords(txt, term);
-      row.classList.toggle('row-hidden', !match);
-      if(match) cardVis++;
-    });
-    card.style.display = rows.length > 0 && cardVis === 0 && term ? 'none' : '';
-  });
-
-  // Update count
-  if(term){
-    const total = oVis + dVis + rVis;
-    countEl.textContent = total > 0 ? `${oVis} resultater` : 'Ingen resultater';
-  } else {
-    countEl.textContent = '';
-  }
-}
-
 function renderPrOrdre(){
-  // Byg retur-map: varenr -> returAntal fordelt pr ordre
   const fordeling=returData.length?beregnFordeling():[];
   const returPrOrdre={};
-  // Sorter linjer i fordeling efter pos
-  for(const ord of fordeling){
-    ord.linjer.sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999));
-  }
-  for(const ord of fordeling){
-    returPrOrdre[ord.ordrenr]={};
-    for(const l of ord.linjer){
-      const k=l.varenr||l.navn||'?';
-      returPrOrdre[ord.ordrenr][k]=(returPrOrdre[ord.ordrenr][k]||0)+l.returAntal;
-    }
-  }
-
+  for(const ord of fordeling){returPrOrdre[ord.ordrenr]={};for(const l of ord.linjer){const k=l.varenr||l.navn||'?';returPrOrdre[ord.ordrenr][k]=(returPrOrdre[ord.ordrenr][k]||0)+l.returAntal;}}
   const harRetur=returData.some(r=>r.checked&&r.returAntal>0);
-
   document.getElementById('d-content').innerHTML=(parsed.ordrer||[]).map(ord=>{
     const rMap=returPrOrdre[ord.ordrenr]||{};
-    // Sorter linjer efter pos-nummer
-    const linjer=[...(ord.linjer||[])].sort((a,b)=>{
-      const pa=parseInt(a.pos)||999;
-      const pb=parseInt(b.pos)||999;
-      return pa-pb;
-    });
+    const linjer=[...(ord.linjer||[])].sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999));
     const ordRetur=Object.values(rMap).reduce((s,v)=>s+v,0);
     const rows=linjer.map(l=>{
-      const k=l.varenr||l.navn||'?';
-      const retur=rMap[k]||0;
-      const rest=Math.round(l.antal)-retur;
-      const returCell=harRetur
-        ?(retur>0?`<td class="td-green">${retur}</td>`:`<td class="td-dim">—</td>`)
-        :'';
-      const restCell=harRetur
-        ?(retur>0?`<td class="${rest>0?'td-dim':'td-green'}">${rest}</td>`:`<td class="td-dim">${Math.round(l.antal)}</td>`)
-        :'';
-      return `<tr>
-        <td class="td-mono td-dim">${l.pos||'—'}</td>
-        <td>${l.navn||'—'}</td>
-        <td class="td-mono">${l.varenr||'—'}</td>
-        <td class="td-bold">${Math.round(l.antal)}</td>
-        ${returCell}${restCell}
-        <td class="td-mono">${l.enhed||'stk'}</td>
-      </tr>`;
+      const k=l.varenr||l.navn||'?';const retur=rMap[k]||0;const rest=Math.round(l.antal)-retur;
+      const returCell=harRetur?(retur>0?`<td class="td-green">${retur}</td>`:`<td class="td-dim">—</td>`):'';
+      const restCell=harRetur?(retur>0?`<td class="${rest>0?'td-dim':'td-green'}">${rest}</td>`:`<td class="td-dim">${Math.round(l.antal)}</td>`):'';
+      return `<tr><td class="td-pos">${l.pos||'—'}</td><td>${l.navn||'—'}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-bold">${Math.round(l.antal)}</td>${returCell}${restCell}<td class="td-mono">${l.enhed||'stk'}</td></tr>`;
     }).join('');
-
     const thRetur=harRetur?'<th style="color:var(--green)">Retur</th><th>Tilbage</th>':'';
     const badge=harRetur&&ordRetur>0?`<span class="ordre-total-badge" style="margin-left:8px;">${Math.round(ordRetur)} retur</span>`:'';
-
-    return `<div class="ord-block">
-      <div class="ord-title" style="display:flex;align-items:center;">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}</div>
-      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>`;
+    return `<div class="ord-block"><div class="ord-title">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}</div>
+      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join('');
 }
 
+// ── Retur editor ──
 function visReturEditor(){
   const t=getTotals(),ks=Object.keys(t);
   returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
   soegTerm=globalSearchTerm;
   const si=document.getElementById('soeg-input');if(si)si.value=globalSearchTerm;
-  const sc=document.getElementById('soeg-count');if(sc)sc.textContent='';
   renderReturTable();
   document.getElementById('results').style.display='none';
   document.getElementById('retur-editor').style.display='';
   updateBadge();
 }
 
-let soegTerm='';
-
-function filterRetur(val){
-  soegTerm=val.toLowerCase().trim();
-  renderReturTable();
-}
-
 function renderReturTable(){
-  const synlige=returData.filter((_,i)=>{
-    if(!soegTerm)return true;
-    const r=returData[i];
-    const txt=(r.navn+' '+r.varenr).toLowerCase();
-    return matchWords(txt, soegTerm);
-  });
   const countEl=document.getElementById('soeg-count');
-  if(soegTerm&&countEl) countEl.textContent=`${synlige.length} af ${returData.length} varer`;
-  else if(countEl) countEl.textContent='';
+  const synlige=returData.filter(r=>!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(),soegTerm));
+  if(countEl)countEl.textContent=soegTerm?`${synlige.length} af ${returData.length} varer`:'';
   document.getElementById('retur-tbody').innerHTML=returData.map((r,i)=>{
-    const vis=!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(), soegTerm);
-    if(!vis)return `<tr style="display:none" id="rrow-${i}"></tr>`;
-    return `
-    <tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
+    const vis=!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(),soegTerm);
+    if(!vis)return`<tr style="display:none" id="rrow-${i}"></tr>`;
+    return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
       <td>${r.navn}</td>
       <td class="td-mono">${r.varenr||'—'}</td>
       <td class="td-dim">${Math.round(r.antal)} ${r.enhed}</td>
-      <td>
-        <div class="retur-qty-cell">
-          <input type="number" min="0" max="${r.antal}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/>
-          <span class="max-lbl">/ ${Math.round(r.antal)}</span>
-        </div>
-      </td>
+      <td><div class="retur-qty-cell"><input type="number" min="0" max="${r.antal}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(r.antal)}</span></div></td>
       <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value"/></td>
     </tr>`;
   }).join('');
 }
 
+function filterRetur(val){soegTerm=val.toLowerCase().trim();renderReturTable();}
 function toggleRow(i,checked){
   returData[i].checked=checked;
   const row=document.getElementById('rrow-'+i);
   row.classList.toggle('checked',checked);
-  row.querySelector('input[type=number]').disabled=!checked;
-  row.querySelector('input.note-input').disabled=!checked;
-  updateBadge(); updateSelectAll();
+  updateBadge();
 }
-function toggleAll(checked){returData.forEach((r,i)=>{r.checked=checked;});renderReturTable();updateBadge();}
+function toggleAll(checked){returData.forEach(r=>r.checked=checked);renderReturTable();updateBadge();}
 function updateQty(i,val){
   const v=Math.max(0,Math.min(Number(val),returData[i].antal));
   returData[i].returAntal=v;
   document.getElementById('qty-'+i).value=Math.round(v);
+  if(v>0&&!returData[i].checked){returData[i].checked=true;toggleRow(i,true);document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=true;}
+  if(v===0&&returData[i].checked){returData[i].checked=false;toggleRow(i,false);document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=false;}
   gemSession();
-  // Auto-tjek rækken hvis antal > 0, fjern flueben hvis 0
-  if(v>0 && !returData[i].checked){ returData[i].checked=true; toggleRow(i,true); document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=true; }
-  if(v===0 && returData[i].checked){ returData[i].checked=false; toggleRow(i,false); document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=false; }
 }
 function updateBadge(){const n=returData.filter(r=>r.checked).length;document.getElementById('retur-badge').textContent=`${n} vare${n===1?'':'r'} valgt`;}
-function updateSelectAll(){document.getElementById('select-all').checked=returData.every(r=>r.checked);}
 
-// ─── FORDELING PR. ORDRE ────────────────────────────────────────────────────
-// For hvert valgt varenr med returAntal > 0:
-// Gå igennem ordrerne sorteret efter dato (ældst først).
-// Træk fra ældste ordre indtil returAntal er opbrugt.
+// ── Fordeling ──
 function beregnFordeling(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
-  // Sorter ordrer: parse dato "dd-mm-yy" eller brug ordrenr som fallback
   const ordrer=[...(parsed.ordrer||[])].sort((a,b)=>{
     const pd=s=>{if(!s)return 0;const p=s.split('-');if(p.length===3){const[d,m,y]=p;return new Date(`20${y}`,m-1,d);}return 0;};
     return pd(a.dato)-pd(b.dato);
   });
-
-  // Byg map: ordrenr -> { varenr -> {beholdning, pos} }
-  const beholdning={};
-  const posMap={}; // varenr -> pos (fra første ordre der har varen)
-  for(const ord of ordrer){
-    beholdning[ord.ordrenr]={};
-    for(const l of ord.linjer||[]){
-      const k=l.varenr||l.navn||'?';
-      beholdning[ord.ordrenr][k]=(beholdning[ord.ordrenr][k]||0)+Number(l.antal)||0;
-      // Gem pos for dette varenr
-      if(l.pos && !posMap[k]) posMap[k]=l.pos;
-    }
-  }
-
-  // Fordel retur
+  const beholdning={};const posMap={};
+  for(const ord of ordrer){beholdning[ord.ordrenr]={};for(const l of ord.linjer||[]){const k=l.varenr||l.navn||'?';beholdning[ord.ordrenr][k]=(beholdning[ord.ordrenr][k]||0)+Number(l.antal)||0;if(l.pos&&!posMap[k])posMap[k]=l.pos;}}
   const fordeling={};
-  for(const ord of ordrer) fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',linjer:[]};
-
+  for(const ord of ordrer)fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',linjer:[]};
   for(const r of valgte){
-    const k=r.varenr||r.navn||'?';
-    const pos=posMap[k]||r.pos||'';
-    let tilbage=r.returAntal;
-    for(const ord of ordrer){
-      if(tilbage<=0)break;
-      const tilgaengelig=beholdning[ord.ordrenr][k]||0;
-      if(tilgaengelig<=0)continue;
-      const trækker=Math.min(tilgaengelig,tilbage);
-      fordeling[ord.ordrenr].linjer.push({pos,varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trækker,note:r.note});
-      tilbage-=trækker;
-    }
+    const k=r.varenr||r.navn||'?';const pos=posMap[k]||r.pos||'';let tilbage=r.returAntal;
+    for(const ord of ordrer){if(tilbage<=0)break;const tilg=beholdning[ord.ordrenr][k]||0;if(tilg<=0)continue;const trk=Math.min(tilg,tilbage);fordeling[ord.ordrenr].linjer.push({pos,varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trk,note:r.note});tilbage-=trk;}
   }
+  // Sorter linjer efter pos
+  for(const ord of Object.values(fordeling))ord.linjer.sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999));
   return Object.values(fordeling);
 }
 
 function genererRetur(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
-  if(!valgte.length){alert('Vælg mindst én vare og angiv antal retur.');return;}
+  if(!valgte.length){alert('Angiv antal retur for mindst én vare.');return;}
   const caseNum=document.getElementById('case-num').value||'ukendt';
   const fordeling=beregnFordeling();
   const totalRetur=valgte.reduce((s,r)=>s+r.returAntal,0);
-
-  // ── Returliste header ──
-  let html=`
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-      <div>
-        <div style="font-size:13px;color:var(--text-2);margin-bottom:2px;">Sag: <strong style="color:var(--text)">${caseNum}</strong></div>
-        <div style="font-size:12px;color:var(--text-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="primary" onclick="copyRetur()">Kopier</button>
-        <button onclick="printRetur()">Udskriv</button>
-      </div>
-    </div>`;
-
-  // ── Samlet tabel ──
+  const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
+  let html=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+    <div><div style="font-size:13px;color:var(--text-2);margin-bottom:2px;">Sag: <strong style="color:var(--text)">${caseNum}</strong></div><div style="font-size:12px;color:var(--text-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
+    <div style="display:flex;gap:8px;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button></div>
+  </div>`;
   html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:8px;">Samlet returliste</div>
   <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
     ${valgte.map(r=>`<tr><td>${r.navn}</td><td class="td-mono">${r.varenr||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${r.enhed}</td><td class="td-dim">${r.note||'—'}</td></tr>`).join('')}
   </tbody></table>
-  <div class="sum-footer">
-    <span>I alt: ${Math.round(totalRetur)} enheder retur</span>
-    <span>Fordelt på ${valgte.length} varelinjer</span>
-  </div>`;
-
-  // ── Fordeling pr. ordre ──
-  html+=`<div class="fordeling-wrapper">
-    <div class="fordeling-title">Fordeling pr. ordre</div>
-    <div class="fordeling-subtitle">Retur-antallet er automatisk fordelt fra ældste ordre først.</div>`;
-
+  <div class="sum-footer"><span>I alt: ${Math.round(totalRetur)} enheder retur</span><span>Fordelt på ${valgte.length} varelinjer</span></div>`;
+  html+=`<div class="fordeling-wrapper"><div class="fordeling-title">Fordeling pr. ordre</div><div class="fordeling-subtitle">Retur fordelt fra ældste ordre først.</div>`;
   for(const ord of fordeling){
     const ordTotal=ord.linjer.reduce((s,l)=>s+l.returAntal,0);
-    html+=`<div class="ordre-fordeling-card">
-      <div class="ordre-fordeling-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="ordre-nr">${ord.ordrenr}</span>
-          ${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}
-        </div>
-        ${ordTotal>0?`<span class="ordre-total-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--text-3);">Ingen retur på denne ordre</span>'}
-      </div>`;
-    if(ord.linjer.length){
-      html+=`<table class="ordre-fordeling-table"><tbody>
-        ${ord.linjer.map(l=>`<tr>
-          <td class="td-mono td-dim" style="width:44px;">${l.pos||'—'}</td>
-          <td>${l.navn}</td>
-          <td class="td-mono">${l.varenr||'—'}</td>
-          <td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td>
-          <td class="td-dim">${l.note||''}</td>
-        </tr>`).join('')}
-      </tbody></table>`;
-    } else {
-      html+=`<div class="ingen-retur">Ingen varer trækkes retur på denne ordre</div>`;
-    }
+    html+=`<div class="ordre-fordeling-card"><div class="ordre-fordeling-header"><div style="display:flex;align-items:center;gap:10px;"><span class="ordre-nr">${ord.ordrenr}</span>${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}</div>${ordTotal>0?`<span class="ordre-total-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--text-3);">Ingen retur</span>'}</div>`;
+    if(ord.linjer.length){html+=`<table class="ordre-fordeling-table"><tbody>${ord.linjer.map(l=>`<tr><td class="td-pos" style="width:44px;">${l.pos||'—'}</td><td>${l.navn}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td><td class="td-dim">${l.note||''}</td></tr>`).join('')}</tbody></table>`;}
+    else{html+=`<div class="ingen-retur">Ingen varer trækkes retur på denne ordre</div>`;}
     html+=`</div>`;
   }
   html+=`</div>`;
-
   document.getElementById('r-content').innerHTML=html;
   document.getElementById('retur-editor').style.display='none';
   document.getElementById('results').style.display='';
-  renderPrOrdre();
-  applyGlobalFilter();
-  gemSession();
+  renderPrOrdre();applyGlobalFilter();gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
 }
 
 function copyRetur(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
   const cn=document.getElementById('case-num').value;
+  const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).join(', ');
   const fordeling=beregnFordeling();
-  let s=`RETURLISTE — Sag: ${cn}\nDato: ${new Date().toLocaleDateString('da-DK')}\n\n`;
-  s+=`SAMLET:\n`;
+  let s=`RETURLISTE — Sag: ${cn}\nDato: ${new Date().toLocaleDateString('da-DK')}\n\nSAMLET:\n`;
   valgte.forEach(r=>{s+=`  ${r.navn} (${r.varenr}): ${Math.round(r.returAntal)} ${r.enhed}`;if(r.note)s+=` — ${r.note}`;s+='\n';});
   s+=`\nFORDELING PR. ORDRE:\n`;
-  fordeling.forEach(ord=>{
-    if(!ord.linjer.length)return;
-    s+=`\n${ord.ordrenr}${ord.dato?' ('+ord.dato+')':''}:\n`;
-    ord.linjer.forEach(l=>{s+=`  ${l.navn} (${l.varenr}): ${Math.round(l.returAntal)} ${l.enhed}`;if(l.note)s+=` — ${l.note}`;s+='\n';});
-  });
+  fordeling.forEach(ord=>{if(!ord.linjer.length)return;s+=`\n${ord.ordrenr}${ord.dato?' ('+ord.dato+')':''}:\n`;ord.linjer.forEach(l=>{s+=`  [${l.pos||'—'}] ${l.navn} (${l.varenr}): ${Math.round(l.returAntal)} ${l.enhed}`;if(l.note)s+=` — ${l.note}`;s+='\n';});});
   navigator.clipboard.writeText(s).then(()=>{const b=event.target;const o=b.textContent;b.textContent='Kopieret ✓';setTimeout(()=>b.textContent=o,2000);});
 }
 
@@ -1095,125 +539,52 @@ function printRetur(){
   const fordeling=beregnFordeling();
   const dato=new Date().toLocaleDateString('da-DK');
   const totalAntal=valgte.reduce((s,r)=>s+r.returAntal,0);
-  const ordrenumre=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
-
-  const samletRows=valgte.map((r,i)=>`
-    <tr class="${i%2===0?'even':'odd'}">
-      <td>${r.navn}</td>
-      <td class="mono">${r.varenr||'—'}</td>
-      <td class="antal">${Math.round(r.returAntal)}</td>
-      <td class="mono">${r.enhed}</td>
-      <td>${r.note||''}</td>
-    </tr>`).join('');
-
+  const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
+  const samletRows=valgte.map((r,i)=>`<tr class="${i%2===0?'even':'odd'}"><td>${r.navn}</td><td class="mono">${r.varenr||'—'}</td><td class="antal">${Math.round(r.returAntal)}</td><td class="mono">${r.enhed}</td><td>${r.note||''}</td></tr>`).join('');
   let ordreHtml='';
   fordeling.forEach(ord=>{
     if(!ord.linjer.length)return;
-    ordreHtml+=`
-      <div class="ordre-header">${ord.ordrenr}${ord.dato?' &nbsp;·&nbsp; '+ord.dato:''}</div>
-      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
-      ${ord.linjer.map((l,i)=>`<tr class="${i%2===0?'even':'odd'}">
-        <td class="mono" style="color:#9e9890">${l.pos||'—'}</td><td>${l.navn}</td><td class="mono">${l.varenr||'—'}</td>
-        <td class="antal green">${Math.round(l.returAntal)}</td>
-        <td class="mono">${l.enhed}</td><td>${l.note||''}</td>
-      </tr>`).join('')}
-      </tbody></table>`;
+    ordreHtml+=`<div class="ordre-header">${ord.ordrenr}${ord.dato?' &nbsp;·&nbsp; '+ord.dato:''}</div>
+    <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
+    ${ord.linjer.map((l,i)=>`<tr class="${i%2===0?'even':'odd'}"><td class="mono" style="color:#9e9890">${l.pos||'—'}</td><td>${l.navn}</td><td class="mono">${l.varenr||'—'}</td><td class="antal green">${Math.round(l.returAntal)}</td><td class="mono">${l.enhed}</td><td>${l.note||''}</td></tr>`).join('')}
+    </tbody></table>`;
   });
-
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html>
-<html lang="da">
-<head>
-<meta charset="UTF-8"/>
-<title>Returliste ${cn}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;font-size:12px;color:#1a1815;background:#fff;padding:2.5rem;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #1a1815;}
-  .logo{font-family:'DM Sans',sans-serif;font-size:18px;font-weight:500;background:#1a1815;color:#fff;padding:6px 14px;border-radius:6px;letter-spacing:.05em;}
-  .header-right{text-align:right;}
-  .header-right h1{font-size:20px;font-weight:500;letter-spacing:-.3px;margin-bottom:4px;}
-  .header-right p{font-size:11px;color:#6b6560;}
-  .meta{display:flex;gap:2rem;margin-bottom:1.5rem;padding:12px 16px;background:#f5f3ef;border-radius:8px;}
-  .meta-item{}
-  .meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9e9890;margin-bottom:2px;}
-  .meta-value{font-size:13px;font-weight:500;}
-  .summary-box{display:flex;gap:1rem;margin-bottom:1.5rem;}
-  .stat{flex:1;border:1px solid #e2ddd8;border-radius:8px;padding:10px 14px;}
-  .stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9e9890;margin-bottom:2px;}
-  .stat-v{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;}
-  .stat-v.green{color:#1a7a3c;}
-  .section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b6560;margin-bottom:8px;margin-top:1.5rem;}
-  table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem;}
-  th{text-align:left;padding:6px 8px;background:#f5f3ef;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;border-bottom:1px solid #e2ddd8;}
-  td{padding:6px 8px;border-bottom:1px solid #e2ddd8;}
-  tr.even td{background:#fff;}
-  tr.odd td{background:#faf9f7;}
-  .mono{font-family:'DM Mono',monospace;font-size:11px;color:#6b6560;}
-  .antal{font-weight:500;text-align:right;}
-  .antal.green{color:#1a7a3c;}
-  .divider{border:none;border-top:2px solid #e2ddd8;margin:1.5rem 0;}
-  .ordre-header{font-size:11px;font-weight:500;background:#eef2fd;color:#1a4fd6;padding:6px 10px;border-radius:6px;margin-bottom:6px;margin-top:1rem;font-family:'DM Mono',monospace;}
-  .footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2ddd8;font-size:10px;color:#9e9890;display:flex;justify-content:space-between;}
-  .total-row td{font-weight:500;border-top:2px solid #1a1815;background:#f5f3ef!important;}
-  @media print{
-    body{padding:1.5rem;}
-    @page{margin:1.5cm;size:A4;}
-  }
-</style>
-</head>
-<body>
-<div class="header">
-  <div class="logo">BD</div>
-  <div class="header-right">
-    <h1>Returliste</h1>
-    <p>Brødrene Dahl A/S &nbsp;·&nbsp; Genereret ${dato}</p>
-  </div>
-</div>
-
-<div class="meta">
-  <div class="meta-item"><div class="meta-label">Sagsnummer</div><div class="meta-value">${cn}</div></div>
-  <div class="meta-item"><div class="meta-label">Ordrer</div><div class="meta-value">${ordrenumre||'—'}</div></div>
-  <div class="meta-item"><div class="meta-label">Dato</div><div class="meta-value">${dato}</div></div>
-</div>
-
-<div class="summary-box">
-  <div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${valgte.length}</div></div>
-  <div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div>
-</div>
-
-<div class="section-title">Samlet returliste</div>
-<table>
-  <thead><tr><th>Materiale</th><th>Varenr.</th><th style="text-align:right">Antal retur</th><th>Enhed</th><th>Note</th></tr></thead>
-  <tbody>
-    ${samletRows}
-    <tr class="total-row">
-      <td colspan="2"><strong>I alt</strong></td>
-      <td class="antal"><strong>${Math.round(totalAntal)}</strong></td>
-      <td colspan="2"></td>
-    </tr>
-  </tbody>
-</table>
-
-<div class="divider"></div>
-<div class="section-title">Fordeling pr. ordre</div>
-${ordreHtml}
-
-<div class="footer">
-  <span>BD Retur-assistent &nbsp;·&nbsp; retur-app.vercel.app</span>
-  <span>Sag: ${cn} &nbsp;·&nbsp; ${dato}</span>
-</div>
-
-<script>
-  window.onload = function() {
-    window.print();
-  };
-<\/script>
-</body></html>`);
+  w.document.write(`<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"/><title>Returliste ${cn}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;font-size:12px;color:#1a1815;background:#fff;padding:2.5rem;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #1a1815;}.logo{font-size:18px;font-weight:500;background:#1a1815;color:#fff;padding:6px 14px;border-radius:6px;}.header-right h1{font-size:20px;font-weight:500;margin-bottom:4px;}.header-right p{font-size:11px;color:#6b6560;}.meta{display:flex;gap:2rem;margin-bottom:1.5rem;padding:12px 16px;background:#f5f3ef;border-radius:8px;}.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9e9890;margin-bottom:2px;}.meta-value{font-size:13px;font-weight:500;}.summary-box{display:flex;gap:1rem;margin-bottom:1.5rem;}.stat{flex:1;border:1px solid #e2ddd8;border-radius:8px;padding:10px 14px;}.stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9e9890;margin-bottom:2px;}.stat-v{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;}.stat-v.green{color:#1a7a3c;}.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b6560;margin-bottom:8px;margin-top:1.5rem;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem;}th{text-align:left;padding:6px 8px;background:#f5f3ef;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;border-bottom:1px solid #e2ddd8;}td{padding:6px 8px;border-bottom:1px solid #e2ddd8;}tr.even td{background:#fff;}tr.odd td{background:#faf9f7;}.mono{font-family:'DM Mono',monospace;font-size:11px;color:#6b6560;}.antal{font-weight:500;text-align:right;}.antal.green{color:#1a7a3c;}.divider{border:none;border-top:2px solid #e2ddd8;margin:1.5rem 0;}.ordre-header{font-size:11px;font-weight:500;background:#eef2fd;color:#1a4fd6;padding:6px 10px;border-radius:6px;margin-bottom:6px;margin-top:1rem;font-family:'DM Mono',monospace;}.footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2ddd8;font-size:10px;color:#9e9890;display:flex;justify-content:space-between;}.total-row td{font-weight:500;border-top:2px solid #1a1815;background:#f5f3ef!important;}@media print{body{padding:1.5rem;}@page{margin:1.5cm;size:A4;}}</style></head><body>
+  <div class="header"><div class="logo">BD</div><div class="header-right"><h1>Returliste</h1><p>Brødrene Dahl A/S &nbsp;·&nbsp; Genereret ${dato}</p></div></div>
+  <div class="meta"><div><div class="meta-label">Sagsnummer</div><div class="meta-value">${cn}</div></div><div><div class="meta-label">Ordrer</div><div class="meta-value">${ons||'—'}</div></div><div><div class="meta-label">Dato</div><div class="meta-value">${dato}</div></div></div>
+  <div class="summary-box"><div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${valgte.length}</div></div><div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div></div>
+  <div class="section-title">Samlet returliste</div>
+  <table><thead><tr><th>Materiale</th><th>Varenr.</th><th style="text-align:right">Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>${samletRows}<tr class="total-row"><td colspan="2"><strong>I alt</strong></td><td class="antal"><strong>${Math.round(totalAntal)}</strong></td><td colspan="2"></td></tr></tbody></table>
+  <div class="divider"></div>
+  <div class="section-title">Fordeling pr. ordre</div>${ordreHtml}
+  <div class="footer"><span>BD Retur-assistent &nbsp;·&nbsp; retur-app.vercel.app</span><span>Sag: ${cn} &nbsp;·&nbsp; ${dato}</span></div>
+  <script>window.onload=function(){window.print();};<\/script></body></html>`);
   w.document.close();
 }
 
+// ── Global søgning ──
+function globalFilter(val){
+  globalSearchTerm=val.toLowerCase().trim();
+  document.getElementById('clear-search-btn').style.display=globalSearchTerm?'':'none';
+  const soegInput=document.getElementById('soeg-input');
+  if(soegInput){soegInput.value=val;filterRetur(val);}
+  applyGlobalFilter();
+}
+function clearGlobalSearch(){document.getElementById('global-search').value='';globalFilter('');}
+function applyGlobalFilter(){
+  const term=globalSearchTerm;
+  const countEl=document.getElementById('global-search-count');
+  let oVis=0,dVis=0,rVis=0;
+  document.querySelectorAll('#o-tbl tbody tr').forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);if(match)oVis++;});
+  document.querySelectorAll('#d-content tbody tr').forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);});
+  document.querySelectorAll('#d-content .ord-block').forEach(block=>{const vis=block.querySelectorAll('tbody tr:not(.row-hidden)');block.style.display=vis.length===0&&term?'none':'';});
+  document.querySelectorAll('#r-content table:first-of-type tbody tr').forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);if(match)rVis++;});
+  document.querySelectorAll('.ordre-fordeling-card').forEach(card=>{const rows=card.querySelectorAll('tbody tr');let cv=0;rows.forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);if(match)cv++;});card.style.display=rows.length>0&&cv===0&&term?'none':'';});
+  if(countEl)countEl.textContent=term?`${oVis} resultater`:'';
+}
+
+// ── Tabs ──
 function sw(tab,el){
   ['o','d','r','c'].forEach(t=>document.getElementById('t-'+t).style.display='none');
   document.getElementById('t-'+tab).style.display='';
@@ -1222,10 +593,11 @@ function sw(tab,el){
   applyGlobalFilter();
 }
 
+// ── Chat ──
 async function doChat(){
   const inp=document.getElementById('ci'),msg=inp.value.trim();if(!msg)return;
   inp.value='';
-  const apiKey=document.getElementById('api-key').value.trim();
+  const apiKey=getApiKey();
   const area=document.getElementById('chat');
   area.innerHTML+=`<div class="msg msg-user"><div class="bubble">${msg}</div></div>`;
   const tid='tid'+Date.now();
@@ -1234,43 +606,27 @@ async function doChat(){
   try{
     const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({message:msg,context:ctx})});
     const d=await r.json();
-    const reply=(d.content||[]).map(c=>c.text||'').join('')||'Prøv igen.';
+    const reply=d.reply||d.error||'Prøv igen.';
     document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">${reply.replace(/\n/g,'<br>')}</div></div>`;
   }catch(e){document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Fejl: ${e.message}</div></div>`;}
   area.scrollTop=area.scrollHeight;
 }
 
-// Genopret session når siden er klar
-window.addEventListener('load', function() {
-  setTimeout(function() {
-    // Indlæs gemte sager
-    try {
-      const raw = localStorage.getItem('bd_alle_sager');
-      if (raw) alleSager = JSON.parse(raw) || [];
-    } catch {}
-
-    // Vis sagsmapper hvis der er sager, ellers vis upload
-    if (alleSager.length > 0) {
-      visMapper();
-    } else {
-      visUpload();
-    }
-
-    // Genopret session
-    if (document.getElementById('case-num') && document.getElementById('results')) {
+// ── Session restore ──
+window.addEventListener('load',function(){
+  setTimeout(function(){
+    if(document.getElementById('case-num')&&document.getElementById('results')){
       genopretSession();
     }
-  }, 200);
+  },200);
 });
-
-// Genopret også når bruger navigerer tilbage (back/forward cache)
-window.addEventListener('pageshow', function(e) {
-  if (e.persisted || performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
-    setTimeout(function() {
-      if (document.getElementById('case-num') && document.getElementById('results')) {
+window.addEventListener('pageshow',function(e){
+  if(e.persisted||performance.getEntriesByType('navigation')[0]?.type==='back_forward'){
+    setTimeout(function(){
+      if(!parsed&&document.getElementById('case-num')&&document.getElementById('results')){
         genopretSession();
       }
-    }, 100);
+    },100);
   }
 });
 </script>
