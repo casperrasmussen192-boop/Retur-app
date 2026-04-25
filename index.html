@@ -172,7 +172,8 @@
       <div class="progress-txt" id="pt"></div>
     </div>
     <div class="btn-row">
-      <button class="primary" id="ab" onclick="go()" disabled>Analyser ordrer</button>
+      <button class="primary" id="gb" onclick="grupperOgVis()" disabled>Gruppér og analyser</button>
+      <button class="primary" id="ab" onclick="go()" disabled style="display:none;">Analyser ordrer</button>
       <button onclick="clearAll()">Ryd alt</button>
     </div>
   </div>
@@ -603,9 +604,10 @@ function addFiles(list){
       files.push(f);
   renderFiles();
   document.getElementById('ab').disabled=files.length===0;
+  document.getElementById('gb').disabled=files.length===0;
   document.getElementById('err').style.display='none';
 }
-function removeFile(i){files.splice(i,1);renderFiles();document.getElementById('ab').disabled=files.length===0;}
+function removeFile(i){files.splice(i,1);renderFiles();document.getElementById('ab').disabled=files.length===0;document.getElementById('gb').disabled=files.length===0;}
 function renderFiles(){
   document.getElementById('file-list').innerHTML=files.map((f,i)=>`
     <div class="file-item">
@@ -621,6 +623,7 @@ function clearAll(){
   if(alleSager.length>0){visMapper();return;}
   renderFiles();
   document.getElementById('ab').disabled=true;
+  document.getElementById('gb').disabled=true;
   ['results','retur-editor'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('pw').style.display='none';
   document.getElementById('err').style.display='none';
