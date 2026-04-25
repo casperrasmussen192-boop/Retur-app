@@ -142,10 +142,10 @@
 
   <!-- SAGSMAPPER VIEW -->
   <div id="view-sager" style="display:none;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
-      <input type="text" id="sag-soeg" placeholder="🔍  Søg på sagsnr., kundenavn eller adresse..." oninput="filterSager(this.value)" style="flex:1;max-width:400px;margin-bottom:0;"/>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;">
+      <input type="text" id="sag-soeg" placeholder="🔍  Søg på sagsnr. eller kundenavn..." oninput="filterSager(this.value)" style="flex:1;max-width:360px;margin-bottom:0;"/>
       <span id="sag-soeg-count" style="font-size:12px;color:var(--text-2);"></span>
-      <button class="btn btn-p" onclick="visUpload()" style="margin-left:auto;">+ Upload nye PDF'er</button>
+      <button class="btn btn-p" onclick="visUpload()" style="margin-left:auto;flex-shrink:0;">+ Ny analyse</button>
     </div>
     <span class="lbl">Dine sager</span>
     <div id="sag-liste" style="display:flex;flex-direction:column;gap:8px;"></div>
@@ -153,8 +153,8 @@
 
   <!-- UPLOAD VIEW -->
   <div id="view-upload">
-    <div id="upload-tilbage" style="display:none;margin-bottom:1rem;">
-      <button class="btn" onclick="visMapper()">← Tilbage til sager</button>
+    <div id="upload-tilbage" style="display:none;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);">
+      <button class="btn" onclick="visMapper()">← Tilbage til sagsoversigt</button>
     </div>
   <div class="card" id="upload-card">
     <label class="field-lbl">Sagsnummer</label>
@@ -215,7 +215,8 @@
 
   <!-- Resultater -->
   <div id="results" style="display:none;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+    <div class="divider" style="margin:0 0 1rem 0;"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
       <input type="text" id="global-search" placeholder="🔍  Søg på materiale eller varenr..." oninput="globalFilter(this.value)" style="max-width:360px;margin-bottom:0;"/>
       <span id="global-search-count" style="font-size:12px;color:var(--text-3);"></span>
       <button id="clear-search-btn" onclick="clearGlobalSearch()" style="display:none;font-size:12px;height:28px;padding:0 10px;">Ryd søgning</button>
@@ -385,8 +386,10 @@ function visUpload() {
 function renderSagListe() {
   const el = document.getElementById('sag-liste');
   if (!alleSager.length) {
-    el.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-2);font-size:14px;">
-      Ingen sager endnu. <button class="btn btn-p" onclick="visUpload()" style="margin-left:8px;">Upload PDF'er</button>
+    el.innerHTML = `<div style="text-align:center;padding:2.5rem;color:var(--text-2);font-size:14px;">
+      <div style="font-size:32px;margin-bottom:12px;">📂</div>
+      <div style="font-weight:500;color:var(--text);margin-bottom:6px;">Ingen sager endnu</div>
+      <div style="font-size:13px;margin-bottom:16px;">Tryk på "+ Upload nye PDF'er" øverst til højre for at komme i gang</div>
     </div>`;
     return;
   }
