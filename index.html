@@ -3,198 +3,691 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>BD Retur-assistent</title>
+<title>ReturnFlow — BD Retur-assistent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
-:root{--bg:#f5f3ef;--surface:#fff;--border:#e2ddd8;--border-strong:#c8c2bb;--text:#1a1815;--text-2:#6b6560;--text-3:#9e9890;--blue:#1a4fd6;--blue-bg:#eef2fd;--blue-text:#1a4fd6;--green:#1a7a3c;--green-bg:#edf7f0;--green-light:#c8edd3;--red-bg:#fdf0ef;--red-text:#c0392b;--amber-bg:#fdf7ed;--amber:#9a6800;--radius:10px;--radius-sm:6px;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem;font-size:14px;}
-.container{max-width:860px;margin:0 auto;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
-.field-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:6px;display:block;}
-input[type=text],input[type=password]{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;margin-bottom:1.25rem;}
-input[type=text]:focus,input[type=password]:focus{border-color:var(--blue);}
-input[type=number]{width:70px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text);background:var(--surface);outline:none;text-align:center;}
-input[type=number]:focus{border-color:var(--blue);}
-input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--blue);flex-shrink:0;}
-.dropzone{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:2rem 1rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;}
-.dropzone:hover,.dropzone.over{background:var(--bg);border-color:var(--blue);}
-.dropzone p{font-size:14px;color:var(--text-2);margin-bottom:4px;}
-.dropzone small{font-size:12px;color:var(--text-3);}
-.file-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
-.file-item{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--radius-sm);padding:8px 12px;}
-.file-pill{background:var(--blue-bg);color:var(--blue-text);font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:3px 7px;border-radius:4px;flex-shrink:0;}
-.file-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.file-size{font-size:12px;color:var(--text-3);}
-.btn-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;align-items:center;}
-button{font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;border-radius:var(--radius-sm);padding:0 16px;height:36px;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:background .12s;white-space:nowrap;}
-button:hover{background:var(--bg);}
-button:disabled{opacity:.4;cursor:not-allowed;}
-button.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
-button.primary:hover:not(:disabled){background:#1440b5;}
-button.success{background:var(--green);color:#fff;border-color:var(--green);}
-button.success:hover:not(:disabled){background:#155f30;}
-button.danger{color:var(--red-text);border-color:#f3c4bf;font-size:12px;height:28px;padding:0 10px;}
-button.danger:hover{background:var(--red-bg);}
-.progress-wrap{margin-top:10px;display:none;}
-.progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
-.progress-fill{height:3px;background:var(--blue);border-radius:2px;transition:width .4s;}
-.progress-txt{font-size:12px;color:var(--text-2);margin-top:5px;}
-.spin{display:inline-block;width:11px;height:11px;border:2px solid #bbd0f7;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap;}
-.tab-btn{font-size:13px;padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);transition:all .12s;}
-.tab-btn:hover{background:var(--bg);}
-.tab-btn.active{background:var(--surface);color:var(--text);border-color:var(--border-strong);font-weight:500;}
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem;}
-.stat-box{background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;}
-.stat-lbl{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-.stat-val{font-size:24px;font-weight:300;font-family:'DM Mono',monospace;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{text-align:left;padding:6px 8px;color:var(--text-2);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
-td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:var(--bg);}
-.td-mono{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-2);}
-.td-bold{font-weight:500;}
-.td-dim{color:var(--text-3);}
-.td-green{font-weight:500;color:var(--green);}
-.td-pos{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-3);font-weight:500;}
-.divider{border:none;border-top:1px solid var(--border);margin:1rem 0;}
-.retur-row{transition:background .1s;}
-.retur-row.checked td{background:#f0faf4;}
-.retur-row.checked td:first-child{border-left:3px solid var(--green);}
-.retur-row:not(.checked){opacity:1;}
-.retur-qty-cell{display:flex;align-items:center;gap:8px;}
-.max-lbl{font-size:11px;color:var(--text-3);}
-.note-input{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);outline:none;}
-.note-input:focus{border-color:var(--blue);}
-.chat-msgs{display:flex;flex-direction:column;gap:10px;min-height:60px;}
-.msg{display:flex;gap:10px;}
-.msg-user{justify-content:flex-end;}
-.bubble{padding:9px 13px;font-size:14px;line-height:1.55;max-width:85%;border-radius:var(--radius);}
-.msg-ai .bubble{background:var(--bg);border-radius:0 var(--radius) var(--radius) var(--radius);}
-.msg-user .bubble{background:var(--blue);color:#fff;border-radius:var(--radius) 0 var(--radius) var(--radius);}
-.avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--blue-text);flex-shrink:0;margin-top:2px;font-family:'DM Mono',monospace;}
-.chat-input-row{display:flex;gap:8px;margin-top:12px;}
-.chat-input-row input{flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none;margin-bottom:0;}
-.chat-input-row input:focus{border-color:var(--blue);}
-.ord-block{margin-bottom:20px;}
-.ord-block:last-child{margin-bottom:0;}
-.ord-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
-.error-msg{color:var(--red-text);font-size:13px;margin-top:8px;padding:8px 12px;background:var(--red-bg);border-radius:var(--radius-sm);display:none;}
-.api-hint{font-size:12px;color:var(--text-3);margin-top:4px;margin-bottom:1.25rem;}
-.api-hint a{color:var(--blue-text);}
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
-.retur-count-badge{font-size:12px;background:var(--green-bg);color:var(--green);padding:3px 10px;border-radius:99px;font-weight:500;}
-.fordeling-wrapper{margin-top:1.5rem;}
-.fordeling-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;padding-top:1rem;border-top:1px solid var(--border);}
-.fordeling-subtitle{font-size:12px;color:var(--text-2);margin-bottom:12px;}
-.ordre-fordeling-card{border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
-.ordre-fordeling-card:last-child{margin-bottom:0;}
-.ordre-fordeling-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
-.ordre-nr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text);}
-.ordre-dato{font-size:12px;color:var(--text-3);}
-.ordre-total-badge{font-size:11px;background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:99px;font-weight:500;}
-.ordre-fordeling-table{width:100%;}
-.ordre-fordeling-table td{padding:6px 12px;border-bottom:1px solid var(--border);font-size:13px;}
-.ordre-fordeling-table tr:last-child td{border-bottom:none;}
-.ingen-retur{padding:8px 12px;font-size:12px;color:var(--text-3);font-style:italic;}
-.sum-footer{display:flex;gap:16px;padding:10px 14px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:13px;color:var(--green);font-weight:500;margin-top:12px;}
-.row-hidden{display:none;}
+:root {
+  --ink: #0a0a0a;
+  --ink-2: #525252;
+  --ink-3: #a3a3a3;
+  --ink-4: #d4d4d4;
+  --paper: #fafaf9;
+  --surface: #ffffff;
+  --surface-2: #f5f5f4;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --accent: #0f4c81;
+  --accent-light: #e8f0f9;
+  --accent-mid: #3b7cc4;
+  --green: #166534;
+  --green-bg: #f0fdf4;
+  --green-border: #bbf7d0;
+  --amber: #92400e;
+  --amber-bg: #fffbeb;
+  --red: #991b1b;
+  --red-bg: #fef2f2;
+  --red-border: #fecaca;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+  --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Geist', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── TOP NAV ── */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(250,250,249,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-logo {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: white;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  letter-spacing: .05em;
+}
+
+.nav-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.plan-chip {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 500;
+  border: 1px solid #bfdbfe;
+}
+
+/* ── LAYOUT ── */
+.page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -.02em;
+  margin-bottom: 4px;
+}
+
+.page-sub {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title-icon {
+  width: 22px;
+  height: 22px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+/* ── FORM ELEMENTS ── */
+.field-group { margin-bottom: 1.25rem; }
+.field-group:last-child { margin-bottom: 0; }
+
+label.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+  letter-spacing: .01em;
+}
+
+input[type=text], input[type=password], input[type=email], input[type=number] {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  font-family: 'Geist', sans-serif;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  box-shadow: var(--shadow-sm);
+}
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,76,129,.08); }
+input::placeholder { color: var(--ink-4); }
+input[type=number] { width: 68px; text-align: center; font-family: 'Geist Mono', monospace; font-size: 13px; }
+input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+
+/* ── DROPZONE ── */
+.dropzone {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--surface);
+}
+.dropzone:hover, .dropzone.over {
+  border-color: var(--accent-mid);
+  background: var(--accent-light);
+}
+.dropzone-icon {
+  width: 40px; height: 40px;
+  margin: 0 auto 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.dropzone-text { font-size: 14px; color: var(--ink-2); margin-bottom: 4px; font-weight: 500; }
+.dropzone-sub { font-size: 12px; color: var(--ink-3); }
+
+/* ── FILE LIST ── */
+.file-list { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+}
+.file-pill {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid #bfdbfe;
+}
+.file-name { font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.file-size { font-size: 12px; color: var(--ink-3); font-family: 'Geist Mono', monospace; }
+
+/* ── BUTTONS ── */
+.btn-row { display: flex; gap: 8px; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
+
+button {
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+  height: 34px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  transition: all .12s;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  letter-spacing: -.01em;
+}
+button:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+button:active:not(:disabled) { transform: translateY(1px); }
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  box-shadow: 0 1px 2px rgba(15,76,129,.2);
+}
+button.primary:hover:not(:disabled) { background: #0d4070; border-color: #0d4070; }
+
+button.success {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+  box-shadow: 0 1px 2px rgba(22,101,52,.2);
+}
+button.success:hover:not(:disabled) { background: #14532d; }
+
+button.danger {
+  font-size: 12px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--red);
+  border-color: var(--red-border);
+  background: transparent;
+  box-shadow: none;
+}
+button.danger:hover { background: var(--red-bg); }
+
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+}
+button.ghost:hover { background: var(--surface-2); border-color: var(--border); }
+
+/* ── PROGRESS ── */
+.progress-wrap { margin-top: 12px; display: none; }
+.progress-track { height: 3px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 3px; background: var(--accent); border-radius: 99px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+.progress-txt { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+
+/* ── SPINNER ── */
+.spin {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border: 1.5px solid rgba(15,76,129,.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  width: fit-content;
+}
+.tab-btn {
+  font-size: 13px;
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  box-shadow: none;
+  height: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.tab-btn:hover { background: transparent; color: var(--ink-2); border-color: transparent; }
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+/* ── STATS ── */
+.stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.5rem; }
+.stat-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-lbl { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; font-weight: 500; }
+.stat-val { font-size: 26px; font-weight: 300; font-family: 'Geist Mono', monospace; color: var(--ink); letter-spacing: -.02em; }
+
+/* ── TABLES ── */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  background: var(--surface-2);
+}
+thead th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+thead th:last-child { border-radius: 0 var(--radius-sm) 0 0; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--ink); }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface-2); }
+.td-mono { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-3); }
+.td-bold { font-weight: 600; }
+.td-dim { color: var(--ink-3); }
+.td-green { font-weight: 600; color: var(--green); }
+.td-pos { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--ink-4); background: var(--surface-2); border-radius: 3px; padding: 1px 5px; }
+
+/* ── RETUR EDITOR ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px; }
+.retur-count-badge {
+  font-size: 12px;
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-weight: 500;
+  border: 1px solid #bfdbfe;
+}
+.retur-row.checked td { background: #f0fdf4; }
+.retur-row.checked td:first-child { border-left: 2px solid var(--green); }
+.retur-qty-cell { display: flex; align-items: center; gap: 8px; }
+.max-lbl { font-size: 11px; color: var(--ink-4); font-family: 'Geist Mono', monospace; }
+.note-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-family: 'Geist', sans-serif;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  box-shadow: none;
+}
+.note-input:focus { border-color: var(--accent); }
+
+/* ── FORDELING ── */
+.fordeling-wrapper { margin-top: 1.5rem; }
+.fordeling-title { font-size: 12px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; padding-top: 1rem; border-top: 1px solid var(--border); text-transform: uppercase; letter-spacing: .06em; }
+.fordeling-subtitle { font-size: 12px; color: var(--ink-3); margin-bottom: 12px; }
+.ordre-card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.ordre-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.ordre-nr { font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink); }
+.ordre-dato { font-size: 12px; color: var(--ink-3); }
+.ordre-badge { font-size: 11px; background: var(--green-bg); color: var(--green); padding: 2px 8px; border-radius: 99px; font-weight: 500; border: 1px solid var(--green-border); }
+.ordre-table { width: 100%; }
+.ordre-table td { padding: 7px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.ordre-table tr:last-child td { border-bottom: none; }
+.ingen-retur { padding: 8px 14px; font-size: 12px; color: var(--ink-3); font-style: italic; }
+.sum-footer {
+  display: flex;
+  gap: 20px;
+  padding: 10px 14px;
+  background: var(--green-bg);
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--green);
+  font-weight: 500;
+  margin-top: 12px;
+}
+
+/* ── SEARCH ── */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 380px;
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-4);
+  font-size: 14px;
+  pointer-events: none;
+}
+.search-input-wrap input {
+  padding-left: 32px;
+  margin-bottom: 0;
+}
+
+/* ── ALERTS ── */
+.error-msg {
+  display: none;
+  padding: 10px 14px;
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--red);
+  margin-top: 10px;
+}
+
+/* ── CHAT ── */
+.chat-msgs { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+.msg { display: flex; gap: 10px; }
+.msg-user { justify-content: flex-end; }
+.bubble { padding: 9px 13px; font-size: 13.5px; line-height: 1.55; max-width: 85%; border-radius: 10px; }
+.msg-ai .bubble { background: var(--surface-2); border: 1px solid var(--border); border-radius: 0 10px 10px 10px; color: var(--ink); }
+.msg-user .bubble { background: var(--accent); color: white; border-radius: 10px 0 10px 10px; }
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-family: 'Geist Mono', monospace;
+  border: 1px solid #bfdbfe;
+}
+.chat-input-row { display: flex; gap: 8px; margin-top: 12px; }
+.chat-input-row input { flex: 1; margin-bottom: 0; }
+
+/* ── DIVIDER ── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+/* ── MISC ── */
+.row-hidden { display: none; }
+.badge { font-size: 11px; padding: 2px 7px; border-radius: 99px; font-weight: 500; }
+.b-blue { background: var(--accent-light); color: var(--accent); border: 1px solid #bfdbfe; }
+.b-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--ink-3); }
+.empty-state-icon { font-size: 36px; margin-bottom: 12px; }
+.empty-state-title { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
+.empty-state-sub { font-size: 13px; }
+
+@media(max-width:640px) {
+  .topnav { padding: 0 1rem; }
+  .page { padding: 1.5rem 1rem; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .stats-row .stat-box:last-child { grid-column: span 2; }
+  .tabs { width: 100%; flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
-<div class="container">
-  <div id="top-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div style="width:28px;height:28px;background:var(--blue-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--blue-text);font-family:'DM Mono',monospace;">BD</div>
-      <span style="font-size:13px;color:var(--text-2);" id="top-email"></span>
-      <span id="top-plan" style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--green-bg);color:var(--green);font-weight:500;"></span>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="nav-brand">
+    <div class="nav-logo">BD</div>
+    <span class="nav-title">ReturnFlow</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user">
+      <span id="top-email"></span>
+      <span class="plan-chip" id="top-plan"></span>
     </div>
-    <button onclick="logout()" style="font-size:12px;height:28px;padding:0 12px;">Log ud</button>
+    <button class="ghost" onclick="logout()" style="font-size:12px;height:30px;padding:0 12px;">Log ud</button>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Retur-assistent</h1>
+    <p class="page-sub">Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</p>
   </div>
 
-  <header style="display:flex;align-items:baseline;gap:12px;margin-bottom:2rem;">
-    <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;background:var(--text);color:#fff;padding:4px 10px;border-radius:var(--radius-sm);">BD</div>
-    <h1 style="font-size:20px;font-weight:500;letter-spacing:-.3px;">Retur-assistent</h1>
-    <span style="font-size:13px;color:var(--text-2);">Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</span>
-  </header>
-
+  <!-- UPLOAD CARD -->
   <div class="card">
-    <label class="field-lbl">Sagsnummer</label>
-    <input type="text" id="case-num" placeholder="f.eks. 255560-CR" style="max-width:300px;"/>
-    <label class="field-lbl">Følgeseddel-PDF'er fra SAP</label>
-    <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
-      <p>Klik her eller træk PDF-filer ind</p>
-      <small>Upload alle ordrer på sagen på én gang</small>
-      <input type="file" id="fi" accept=".pdf,application/pdf" multiple style="display:none"/>
+    <div class="card-title">
+      <div class="card-title-icon">📄</div>
+      Upload følgesedler
     </div>
-    <div class="file-list" id="file-list"></div>
+
+    <div class="field-group" style="max-width:320px;">
+      <label class="field-label">Sagsnummer</label>
+      <input type="text" id="case-num" placeholder="f.eks. 255560-CR" onchange="gemSession()"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">PDF-filer fra SAP</label>
+      <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
+        <div class="dropzone-icon">📂</div>
+        <div class="dropzone-text">Klik eller træk filer hertil</div>
+        <div class="dropzone-sub">Understøtter flere filer på én gang</div>
+        <input type="file" id="fi" accept=".pdf,application/pdf" multiple style="display:none"/>
+      </div>
+      <div class="file-list" id="file-list"></div>
+    </div>
+
     <div class="error-msg" id="err"></div>
     <div class="progress-wrap" id="pw">
-      <div class="progress-bar"><div class="progress-fill" id="pb" style="width:0%"></div></div>
+      <div class="progress-track"><div class="progress-fill" id="pb" style="width:0%"></div></div>
       <div class="progress-txt" id="pt"></div>
     </div>
+
     <div class="btn-row">
       <button class="primary" id="ab" onclick="go()" disabled>Analyser ordrer</button>
-      <button onclick="clearAll()">Ryd alt</button>
+      <button class="ghost" onclick="clearAll()">Ryd alt</button>
     </div>
   </div>
 
+  <!-- RETUR EDITOR -->
   <div id="retur-editor" style="display:none;">
     <div class="card">
       <div class="section-header">
-        <h3 style="font-size:15px;font-weight:500;">Angiv antal retur</h3>
+        <div class="card-title" style="margin-bottom:0;">
+          <div class="card-title-icon">↩</div>
+          Angiv antal retur
+        </div>
         <span class="retur-count-badge" id="retur-badge">0 varer valgt</span>
       </div>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;">Skriv antal retur ud for de varer der skal tilbage — rækken markeres automatisk.</p>
-      <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">
-        <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..." oninput="filterRetur(this.value)" style="max-width:320px;margin-bottom:8px;"/>
-        <span id="soeg-count" style="font-size:12px;color:var(--text-3);margin-left:8px;"></span>
+      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Skriv antal i feltet — rækken markeres automatisk.</p>
+
+      <div class="search-bar" style="margin-bottom:1rem;">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..."/>
+        </div>
+        <span id="soeg-count" style="font-size:12px;color:var(--ink-3);"></span>
       </div>
+
       <div style="overflow-x:auto;">
-        <table id="retur-table">
+        <table>
           <thead><tr>
             <th style="width:32px;"></th>
             <th>Materiale</th>
             <th>Varenr.</th>
             <th>Købt i alt</th>
             <th>Antal retur</th>
-            <th>Note / årsag</th>
+            <th>Note</th>
           </tr></thead>
           <tbody id="retur-tbody"></tbody>
         </table>
       </div>
+
       <div class="btn-row" style="margin-top:1.25rem;">
         <button class="success" onclick="genererRetur()">Generer returliste</button>
-        <button onclick="document.getElementById('retur-editor').style.display='none';document.getElementById('results').style.display='';">Tilbage</button>
+        <button onclick="document.getElementById('retur-editor').style.display='none';document.getElementById('results').style.display='';">← Tilbage</button>
       </div>
     </div>
   </div>
 
+  <!-- RESULTS -->
   <div id="results" style="display:none;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
-      <input type="text" id="global-search" placeholder="🔍  Søg på materiale eller varenr..." oninput="globalFilter(this.value)" style="max-width:360px;margin-bottom:0;"/>
-      <span id="global-search-count" style="font-size:12px;color:var(--text-3);"></span>
-      <button id="clear-search-btn" onclick="clearGlobalSearch()" style="display:none;font-size:12px;height:28px;padding:0 10px;">Ryd søgning</button>
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="global-search" placeholder="Søg på materiale eller varenr..." oninput="globalFilter(this.value)"/>
+      </div>
+      <span id="global-search-count" style="font-size:12px;color:var(--ink-3);"></span>
+      <button id="clear-search-btn" onclick="clearGlobalSearch()" style="display:none;font-size:12px;height:30px;padding:0 10px;" class="ghost">Ryd søgning ×</button>
     </div>
+
     <div class="tabs">
-      <button class="tab-btn active" onclick="sw('o',this)">Samlet oversigt</button>
+      <button class="tab-btn active" onclick="sw('o',this)">Oversigt</button>
       <button class="tab-btn" onclick="sw('d',this)">Pr. ordre</button>
       <button class="tab-btn" onclick="sw('r',this)">Returliste</button>
       <button class="tab-btn" onclick="sw('c',this)">Spørg AI</button>
     </div>
+
+    <!-- OVERSIGT -->
     <div id="t-o" class="card">
       <div class="stats-row" id="stats"></div>
       <div id="o-tbl"></div>
       <div class="divider"></div>
-      <button class="primary" onclick="visReturEditor()">Angiv antal retur</button>
+      <button class="primary" onclick="visReturEditor()">Angiv antal retur →</button>
     </div>
+
+    <!-- PR ORDRE -->
     <div id="t-d" class="card" style="display:none;"><div id="d-content"></div></div>
+
+    <!-- RETURLISTE -->
     <div id="t-r" class="card" style="display:none;">
-      <div id="r-content"><p style="font-size:13px;color:var(--text-2);">Tryk "Angiv antal retur" og generer returliste for at se den her.</p></div>
+      <div id="r-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-title">Ingen returliste endnu</div>
+          <div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div>
+        </div>
+      </div>
     </div>
+
+    <!-- CHAT -->
     <div id="t-c" class="card" style="display:none;">
       <div class="chat-msgs" id="chat"></div>
       <div class="chat-input-row">
@@ -204,6 +697,7 @@ tr:hover td{background:var(--bg);}
     </div>
   </div>
 </div>
+
 
 <script>
 // ── Auth ──
@@ -227,7 +721,19 @@ function getApiKey(){return localStorage.getItem('bd_token')||'';}
 const SESSION_KEY='bd_session';
 async function gemSession(){
   if(!parsed)return;
-  const session={caseNum:document.getElementById('case-num')?.value||'',parsed,returData,ts:Date.now()};
+  const activeTab = ['o','d','r','c'].find(t => {
+    const el = document.getElementById('t-'+t);
+    return el && el.style.display !== 'none';
+  }) || 'o';
+  const returlisteHtml = document.getElementById('r-content')?.innerHTML || '';
+  const session={
+    caseNum: document.getElementById('case-num')?.value||'',
+    parsed,
+    returData,
+    activeTab,
+    returlisteHtml: returlisteHtml.includes('Samlet returliste') ? returlisteHtml : '',
+    ts: Date.now()
+  };
   localStorage.setItem(SESSION_KEY,JSON.stringify(session));
   try{
     const token=getApiKey();
@@ -259,9 +765,20 @@ function indlaesSession(session){
   if(document.getElementById('results')){
     renderResults(session.caseNum||'');
     document.getElementById('results').style.display='';
+    // Genopret returliste hvis den fandtes
+    if(session.returlisteHtml){
+      document.getElementById('r-content').innerHTML=session.returlisteHtml;
+    }
+    // Genopret aktiv fane
+    if(session.activeTab){
+      const tabIdx={'o':0,'d':1,'r':2,'c':3}[session.activeTab]||0;
+      const tabs=document.querySelectorAll('.tab-btn');
+      if(tabs[tabIdx])sw(session.activeTab,tabs[tabIdx]);
+    }
     const chatEl=document.getElementById('chat');
-    if(chatEl)chatEl.innerHTML='<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Session genoprettet — du kan fortsætte hvor du slap.</div></div>';
+    if(chatEl)chatEl.innerHTML='<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Session genoprettet ✓ — du kan fortsætte præcis hvor du slap.</div></div>';
     if(returData.length)updateBadge();
+    applyGlobalFilter();
   }
 }
 async function rydSession(){
@@ -322,42 +839,96 @@ async function go(){
   document.getElementById('retur-editor').style.display='none';
   document.getElementById('err').style.display='none';
   const caseNum=document.getElementById('case-num').value.trim()||'ukendt';
-  const BATCH_SIZE=5;
+
+  // Dynamisk batch-størrelse baseret på antal filer
+  // Færre filer pr. batch = mindre hukommelse = mere stabilt for 200+ filer
+  const BATCH_SIZE = files.length > 100 ? 3 : files.length > 50 ? 4 : 5;
   const alleOrdrer=[];
   const totalBatches=Math.ceil(files.length/BATCH_SIZE);
+  const startTime = Date.now();
+  let fejledeBatches = []; // Samler fejlede batches til retry
+  let fejledeFiler = [];   // Endelige fejl der ikke kunne fixes
+
+  // ── Første gennemgang ──
   for(let b=0;b<totalBatches;b++){
     const batchFiles=files.slice(b*BATCH_SIZE,(b+1)*BATCH_SIZE);
-    const pct=Math.round((b/totalBatches)*78);
-    setP(10+pct,`<span class="spin"></span>Analyserer ${b+1} af ${totalBatches} bundter (${b*BATCH_SIZE+1}–${Math.min((b+1)*BATCH_SIZE,files.length)} af ${files.length} filer)...`);
-    const content=[];
-    for(const file of batchFiles){
-      try{const data=await b64(file);content.push({type:'document',source:{type:'base64',media_type:'application/pdf',data},title:file.name});}
-      catch(e){console.error(e);}
+    const pct=Math.round((b/totalBatches)*70);
+    let tidInfo = '';
+    if(b > 0){
+      const elapsed=(Date.now()-startTime)/1000;
+      const perBatch=elapsed/b;
+      const tilbage=Math.round(perBatch*(totalBatches-b));
+      tidInfo=tilbage>60?` — ca. ${Math.ceil(tilbage/60)} min tilbage`:` — ca. ${tilbage} sek tilbage`;
     }
-    if(!content.length)continue;
-    content.push({type:'text',text:`Sagsnummer: ${caseNum}
-Udtrækker ALLE varelinjer fra SAP-dokumenterne.
-VIGTIGT: Brug KUN ordrenumre der starter med 1010 eller 300. IGNORER fakturanumre der starter med 111.
-IGNORER alle varelinjer under sektionen "Leveres fra et andet lager".
-For kreditnotaer skal antal være negativt. Inkluder pos.-nummeret (003, 006 osv.).
-Returner KUN JSON:
-{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":"<003>","varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`});
+    setP(10+pct,`<span class="spin"></span>Batch ${b+1}/${totalBatches} · filer ${b*BATCH_SIZE+1}–${Math.min((b+1)*BATCH_SIZE,files.length)} af ${files.length}${tidInfo}`);
+
+    const pdfs=[];
+    for(const file of batchFiles){
+      try{const data=await b64(file);pdfs.push({name:file.name,data});await new Promise(r=>setTimeout(r,0));}
+      catch(e){console.error('Fil fejl:',file.name);}
+    }
+    if(!pdfs.length)continue;
+
+    let lykkedes=false;
     let forsøg=0;
-    while(forsøg<3){
+    while(forsøg<2){ // Kun 2 forsøg i første runde
       try{
-        const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({pdfs:content.filter(c=>c.type==='document').map(c=>({name:c.title,data:c.source.data})),caseNum})});
-        if(resp.status===429){setP(10+pct,`<span class="spin"></span>Rate limit — venter...`);await new Promise(r=>setTimeout(r,(forsøg+1)*15000));forsøg++;continue;}
+        const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({pdfs,caseNum})});
+        if(resp.status===429){
+          const ventetid=(forsøg+1)*20000;
+          setP(10+pct,`<span class="spin"></span>Rate limit — venter ${ventetid/1000} sek...`);
+          await new Promise(r=>setTimeout(r,ventetid));
+          forsøg++;continue;
+        }
         if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
         const result=await resp.json();
         if(result.error)throw new Error(result.error);
-        const batchParsed=result.data;
-        if(batchParsed?.ordrer)alleOrdrer.push(...batchParsed.ordrer);
-        if(b<totalBatches-1)await new Promise(r=>setTimeout(r,1200));
+        if(result.data?.ordrer)alleOrdrer.push(...result.data.ordrer);
+        lykkedes=true;
+        if(b<totalBatches-1){await new Promise(r=>setTimeout(r,files.length>100?1800:1200));}
         break;
-      }catch(e){if(forsøg>=2){showErr('Fejl i batch '+(b+1)+': '+e.message);btn.disabled=false;return;}forsøg++;}
+      }catch(e){forsøg++;}
+    }
+    if(!lykkedes){
+      fejledeBatches.push({pdfs,batchNr:b+1}); // Gem til retry
     }
   }
-  if(!alleOrdrer.length){showErr('Ingen ordrer kunne læses. Prøv igen.');btn.disabled=false;return;}
+
+  // ── Retry af fejlede batches ──
+  if(fejledeBatches.length>0){
+    setP(82,`<span class="spin"></span>Prøver ${fejledeBatches.length} fejlede batch${fejledeBatches.length>1?'es':''} igen...`);
+    await new Promise(r=>setTimeout(r,3000)); // Vent lidt før retry
+
+    for(const batch of fejledeBatches){
+      let lykkedes=false;
+      let forsøg=0;
+      while(forsøg<3){
+        try{
+          const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({pdfs:batch.pdfs,caseNum})});
+          if(resp.status===429){await new Promise(r=>setTimeout(r,(forsøg+1)*25000));forsøg++;continue;}
+          if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
+          const result=await resp.json();
+          if(result.error)throw new Error(result.error);
+          if(result.data?.ordrer)alleOrdrer.push(...result.data.ordrer);
+          lykkedes=true;
+          await new Promise(r=>setTimeout(r,1500));
+          break;
+        }catch(e){forsøg++;}
+      }
+      if(!lykkedes){
+        // Stadig fejl efter retry — registrer de specifikke filer
+        fejledeFiler.push(...batch.pdfs.map(p=>p.name));
+      }
+    }
+  }
+
+  setP(95,`<span class="spin"></span>Samler resultater...`);
+
+  if(!alleOrdrer.length && fejledeFiler.length===files.length){
+    showErr('Ingen ordrer kunne læses. Tjek filerne og prøv igen.');
+    btn.disabled=false;
+    return;
+  }
   parsed={ordrer:alleOrdrer};ctx=JSON.stringify(parsed);
   setP(100,'Analyse fuldført ✓ ('+alleOrdrer.length+' ordrer)');
   setTimeout(()=>document.getElementById('pw').style.display='none',1000);
@@ -366,6 +937,16 @@ Returner KUN JSON:
   applyGlobalFilter();
   gemSession();
   document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
+
+  // Vis advarsel hvis nogle filer stadig fejlede efter retry
+  if(fejledeFiler.length>0){
+    const errEl=document.getElementById('err');
+    errEl.style.display='block';
+    errEl.style.background='#fffbeb';
+    errEl.style.borderColor='#fde68a';
+    errEl.style.color='#92400e';
+    errEl.innerHTML=`⚠ ${fejledeFiler.length} fil${fejledeFiler.length>1?'er':''}  kunne ikke læses efter gentagne forsøg og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeFiler.join('<br>')}</span><br><br>Tjek disse filer manuelt eller prøv at uploade dem separat.`;
+  }
   btn.disabled=false;
 }
 
@@ -394,7 +975,7 @@ function renderResults(caseNum){
     <div class="stat-box"><div class="stat-lbl">Enheder i alt</div><div class="stat-val">${Math.round(total)}</div></div>`;
   document.getElementById('o-tbl').innerHTML=ks.length
     ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
-    :'<p style="color:var(--text-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
+    :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
   renderPrOrdre();
 }
 
@@ -414,7 +995,7 @@ function renderPrOrdre(){
       return `<tr><td class="td-pos">${l.pos||'—'}</td><td>${l.navn||'—'}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-bold">${Math.round(l.antal)}</td>${returCell}${restCell}<td class="td-mono">${l.enhed||'stk'}</td></tr>`;
     }).join('');
     const thRetur=harRetur?'<th style="color:var(--green)">Retur</th><th>Tilbage</th>':'';
-    const badge=harRetur&&ordRetur>0?`<span class="ordre-total-badge" style="margin-left:8px;">${Math.round(ordRetur)} retur</span>`:'';
+    const badge=harRetur&&ordRetur>0?`<span class="ordre-badge" style="margin-left:8px;">${Math.round(ordRetur)} retur</span>`:'';
     return `<div class="ord-block"><div class="ord-title">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}</div>
       <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join('');
@@ -425,7 +1006,7 @@ function visReturEditor(){
   const t=getTotals(),ks=Object.keys(t);
   returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
   soegTerm=globalSearchTerm;
-  const si=document.getElementById('soeg-input');if(si)si.value=globalSearchTerm;
+  const si=document.getElementById('soeg-input');if(si){si.value=globalSearchTerm;filterRetur(globalSearchTerm);}
   renderReturTable();
   document.getElementById('results').style.display='none';
   document.getElementById('retur-editor').style.display='';
@@ -445,7 +1026,7 @@ function renderReturTable(){
       <td class="td-mono">${r.varenr||'—'}</td>
       <td class="td-dim">${Math.round(r.antal)} ${r.enhed}</td>
       <td><div class="retur-qty-cell"><input type="number" min="0" max="${r.antal}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(r.antal)}</span></div></td>
-      <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value"/></td>
+      <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
     </tr>`;
   }).join('');
 }
@@ -456,6 +1037,7 @@ function toggleRow(i,checked){
   const row=document.getElementById('rrow-'+i);
   row.classList.toggle('checked',checked);
   updateBadge();
+  gemSession();
 }
 function toggleAll(checked){returData.forEach(r=>r.checked=checked);renderReturTable();updateBadge();}
 function updateQty(i,val){
@@ -496,10 +1078,10 @@ function genererRetur(){
   const totalRetur=valgte.reduce((s,r)=>s+r.returAntal,0);
   const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
   let html=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-    <div><div style="font-size:13px;color:var(--text-2);margin-bottom:2px;">Sag: <strong style="color:var(--text)">${caseNum}</strong></div><div style="font-size:12px;color:var(--text-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
+    <div><div style="font-size:13px;color:var(--ink-2);margin-bottom:2px;">Sag: <strong style="color:var(--ink)">${caseNum}</strong></div><div style="font-size:12px;color:var(--ink-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
     <div style="display:flex;gap:8px;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button></div>
   </div>`;
-  html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:8px;">Samlet returliste</div>
+  html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:8px;">Samlet returliste</div>
   <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
     ${valgte.map(r=>`<tr><td>${r.navn}</td><td class="td-mono">${r.varenr||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${r.enhed}</td><td class="td-dim">${r.note||'—'}</td></tr>`).join('')}
   </tbody></table>
@@ -507,8 +1089,8 @@ function genererRetur(){
   html+=`<div class="fordeling-wrapper"><div class="fordeling-title">Fordeling pr. ordre</div><div class="fordeling-subtitle">Retur fordelt fra ældste ordre først.</div>`;
   for(const ord of fordeling){
     const ordTotal=ord.linjer.reduce((s,l)=>s+l.returAntal,0);
-    html+=`<div class="ordre-fordeling-card"><div class="ordre-fordeling-header"><div style="display:flex;align-items:center;gap:10px;"><span class="ordre-nr">${ord.ordrenr}</span>${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}</div>${ordTotal>0?`<span class="ordre-total-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--text-3);">Ingen retur</span>'}</div>`;
-    if(ord.linjer.length){html+=`<table class="ordre-fordeling-table"><tbody>${ord.linjer.map(l=>`<tr><td class="td-pos" style="width:44px;">${l.pos||'—'}</td><td>${l.navn}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td><td class="td-dim">${l.note||''}</td></tr>`).join('')}</tbody></table>`;}
+    html+=`<div class="ordre-card"><div class="ordre-card-header"><div style="display:flex;align-items:center;gap:10px;"><span class="ordre-nr">${ord.ordrenr}</span>${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}</div>${ordTotal>0?`<span class="ordre-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--ink-3);">Ingen retur</span>'}</div>`;
+    if(ord.linjer.length){html+=`<table class="ordre-table"><tbody>${ord.linjer.map(l=>`<tr><td class="td-pos" style="width:44px;">${l.pos||'—'}</td><td>${l.navn}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td><td class="td-dim">${l.note||''}</td></tr>`).join('')}</tbody></table>`;}
     else{html+=`<div class="ingen-retur">Ingen varer trækkes retur på denne ordre</div>`;}
     html+=`</div>`;
   }
@@ -580,7 +1162,7 @@ function applyGlobalFilter(){
   document.querySelectorAll('#d-content tbody tr').forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);});
   document.querySelectorAll('#d-content .ord-block').forEach(block=>{const vis=block.querySelectorAll('tbody tr:not(.row-hidden)');block.style.display=vis.length===0&&term?'none':'';});
   document.querySelectorAll('#r-content table:first-of-type tbody tr').forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);if(match)rVis++;});
-  document.querySelectorAll('.ordre-fordeling-card').forEach(card=>{const rows=card.querySelectorAll('tbody tr');let cv=0;rows.forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);if(match)cv++;});card.style.display=rows.length>0&&cv===0&&term?'none':'';});
+  document.querySelectorAll('.ordre-card').forEach(card=>{const rows=card.querySelectorAll('tbody tr');let cv=0;rows.forEach(row=>{const match=!term||matchWords(row.textContent.toLowerCase(),term);row.classList.toggle('row-hidden',!match);if(match)cv++;});card.style.display=rows.length>0&&cv===0&&term?'none':'';});
   if(countEl)countEl.textContent=term?`${oVis} resultater`:'';
 }
 
@@ -591,6 +1173,7 @@ function sw(tab,el){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   applyGlobalFilter();
+  gemSession();
 }
 
 // ── Chat ──
