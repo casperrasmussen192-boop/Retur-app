@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       const { session } = req.body;
       if (!session) return res.status(400).json({ error: "Ingen session data" });
       // Gem i 7 dage
-      await redis.set(key, JSON.stringify(session), { ex: 7 * 24 * 60 * 60 });
+      await redis.set(key, JSON.stringify(session)); // Ingen udløb — gemmes indtil brugeren sletter
       return res.status(200).json({ ok: true });
     } catch (err) {
       return res.status(500).json({ error: err.message });
