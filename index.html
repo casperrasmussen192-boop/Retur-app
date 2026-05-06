@@ -1100,19 +1100,29 @@ function renderPrOrdre(){
 // ── Retur editor ──
 function visReturEditor(){
   const t=getTotals(),ks=Object.keys(t);
+
   if(!returData.length){
+    // Første gang — opret fra scratch
     returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
   } else {
-    // Bevar hvad brugeren har tastet ind — match på varenr eller navn
+    // BEVAR ALT der er tastet ind — byg nyt array men kopier eksisterende værdier
+    const prevMap={};
+    returData.forEach(r=>{
+      const nk=(r.varenr||r.navn||'').toLowerCase().replace(/^0+/,'').trim();
+      prevMap[nk]=r;
+    });
     returData=ks.map(k=>{
-      const existing=returData.find(r=>
-        (r.varenr&&t[k].varenr&&r.varenr===t[k].varenr)||
-        (r.navn&&t[k].navn&&r.navn===t[k].navn)
-      );
-      if(existing)return{...t[k],returAntal:existing.returAntal,checked:existing.checked,note:existing.note};
+      const nk=(t[k].varenr||t[k].navn||'').toLowerCase().replace(/^0+/,'').trim();
+      const prev=prevMap[nk];
+      if(prev){
+        // Bevar præcis hvad brugeren har tastet — returAntal, checked, note
+        return{...t[k],returAntal:prev.returAntal,checked:prev.checked,note:prev.note};
+      }
       return{...t[k],returAntal:0,checked:false,note:''};
     });
   }
+
+  // Nulstil søgning
   soegTerm='';
   const si=document.getElementById('soeg-input');
   if(si)si.value='';
