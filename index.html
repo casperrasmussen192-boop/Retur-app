@@ -1068,6 +1068,18 @@ async function go(){
 
   setP(95,`<span class="spin"></span>Samler resultater...`);
 
+  // Endelig deduplikering — fjern identiske varelinjer inden for samme ordre
+  for(const ord of alleOrdrer){
+    const set=new Map();
+    ord.linjer=(ord.linjer||[]).filter(l=>{
+      // Nøgle: varenr + pos + antal + navn — alle fire skal matche for at være dublet
+      const k=`${l.varenr||''}|${l.pos||''}|${l.antal}|${l.navn||''}`;
+      if(set.has(k))return false;
+      set.set(k,true);
+      return true;
+    });
+  }
+
   if(!alleOrdrer.length && fejledeFiler.length===files.length){
     showErr('Ingen ordrer kunne læses. Tjek filerne og prøv igen.');
     btn.disabled=false;
