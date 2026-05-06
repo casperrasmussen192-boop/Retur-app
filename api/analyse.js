@@ -40,20 +40,23 @@ export default async function handler(req, res) {
 Udtrækker ALLE varelinjer fra SAP-dokumenterne.
 
 VIGTIGT om dokumentnumre:
-- Brug KUN ordrenumre der starter med 1010 (f.eks. 1010398710)
-- Brug KUN kreditnotanumre der starter med 300 (f.eks. 3001055388)
-- IGNORER fakturanumre der starter med 111 (f.eks. 111378757) — brug dem ikke som ordrenr
-- Hvis et dokument kun har et fakturanummer (111...), så brug filnavnet som ordrenr i stedet
+- Brug KUN ordrenumre der starter med 1010 eller 300. IGNORER fakturanumre der starter med 111.
+- Hvis et dokument kun har et fakturanummer (111...), brug filnavnet som ordrenr i stedet.
+- Hvert ordrenummer må kun optræde ÉN gang i JSON — hvis samme ordrenr ses i flere dokumenter, sammenlæg varelinjerne.
 
 VIGTIGT om varelinjer:
-- Medtag KUN varelinjer fra hoveddelen af følgesedlen
-- IGNORER alle varelinjer under sektionen "Leveres fra et andet lager" — disse er ikke leveret og må ikke returneres
-- Kun leverede varer med "Leveret" antal > 0 skal medtages
+- Medtag KUN varelinjer fra hoveddelen — IGNORER alt under "Leveres fra et andet lager".
+- For kreditnotaer skal antal være negativt (f.eks. -3).
+- Hver varelinje må kun optræde ÉN gang pr. ordrenummer — ingen dubletter.
 
-For kreditnotaer skal antal være negativt (f.eks. -3).
-Inkluder pos./linjenummeret fra dokumentet (f.eks. 003, 006, 009).
-Returner KUN JSON uden markdown — afslut altid JSON korrekt:
-{"ordrer":[{"ordrenr":"<1010... eller 300... nummer>","type":"<følgeseddel eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":"<003>","varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk/m/etc>"}]}]}`,
+VIGTIGT om pos.nr:
+- Pos.nr er et 3-cifret nummer (003, 006, 009...) der står i en separat "Pos" kolonne på følgesedler.
+- Inkluder pos.nr KUN hvis kolonnen faktisk er synlig i dokumentet.
+- Sæt "pos": null hvis dokumentet ikke har en pos-kolonne — opfind ALDRIG et pos.nr.
+- Fakturaer (111...) har INGEN pos-kolonne. Følgesedler har den typisk.
+
+Returner KUN JSON uden markdown:
+{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`,
   });
 
   try {
