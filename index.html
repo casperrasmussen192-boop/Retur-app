@@ -848,8 +848,8 @@ function indlaesSession(session){
     if(session.returlisteHtml){
       document.getElementById('r-content').innerHTML=session.returlisteHtml;
     }
-    // Genopret snapshot til print/copy
-    if(session.returData){
+    // Genopret snapshot til print/copy — brug hele returData
+    if(session.returData&&session.returData.length){
       window._returSnapshot=session.returData.filter(r=>r.checked&&r.returAntal>0);
     }
     // Genopret aktiv fane
@@ -1232,14 +1232,16 @@ function genererRetur(){
   document.getElementById('results').style.display='';
   renderPrOrdre();applyGlobalFilter();gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
-  // Gem returData snapshot til print/copy
+  // Gem returData snapshot til print/copy — gem ALLE varer ikke kun valgte
   window._returSnapshot = returData.filter(r=>r.checked&&r.returAntal>0);
 }
 
 function copyRetur(){
-  const valgte=(returData.filter(r=>r.checked&&r.returAntal>0).length>0
-    ?returData.filter(r=>r.checked&&r.returAntal>0)
-    :window._returSnapshot||[]);
+  let valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  if(!valgte.length&&window._returSnapshot?.length){
+    returData=window._returSnapshot;
+    valgte=returData;
+  }
   const cn=document.getElementById('case-num').value;
   const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).join(', ');
   const fordeling=beregnFordeling();
@@ -1251,9 +1253,13 @@ function copyRetur(){
 }
 
 function printRetur(){
-  const valgte=(returData.filter(r=>r.checked&&r.returAntal>0).length>0
-    ?returData.filter(r=>r.checked&&r.returAntal>0)
-    :window._returSnapshot||[]);
+  // Brug returData hvis det har data, ellers brug snapshot fra session
+  let valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  if(!valgte.length&&window._returSnapshot?.length){
+    // Genopret returData fra snapshot så beregnFordeling virker
+    returData=window._returSnapshot;
+    valgte=returData;
+  }
   if(!valgte.length){alert('Ingen varer valgt til retur.');return;}
   const cn=document.getElementById('case-num').value||'ukendt';
   const fordeling=beregnFordeling();
