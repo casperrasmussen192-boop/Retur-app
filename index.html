@@ -700,7 +700,7 @@ tbody tr:hover td { background: var(--surface-2); }
       <div class="search-bar" style="margin-bottom:1rem;">
         <div class="search-input-wrap">
           <span class="search-icon">🔍</span>
-          <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..."/>
+          <input type="text" id="soeg-input" placeholder="Søg på materiale eller varenr..." oninput="filterRetur(this.value)"/>
         </div>
         <span id="soeg-count" style="font-size:12px;color:var(--ink-3);"></span>
       </div>
@@ -1041,13 +1041,20 @@ function matchWords(text,term){if(!term)return true;return term.split(/\s+/).fil
 function getTotals(){
   if(!parsed)return{};
   const t={};
+  const order=[]; // Bevarer rækkefølgen fra PDF'en
   for(const ord of parsed.ordrer||[])
     for(const l of ord.linjer||[]){
       const k=l.varenr||l.navn||'?';
-      if(!t[k])t[k]={navn:l.navn||k,varenr:l.varenr||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||''};
+      if(!t[k]){
+        t[k]={navn:l.navn||k,varenr:l.varenr||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||''};
+        order.push(k);
+      }
       t[k].antal+=Number(l.antal)||0;
     }
-  return t;
+  // Returner som objekt men med keys i original rækkefølge
+  const result={};
+  order.forEach(k=>result[k]=t[k]);
+  return result;
 }
 
 function renderResults(caseNum){
