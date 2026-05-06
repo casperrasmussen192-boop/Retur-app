@@ -539,11 +539,86 @@ tbody tr:hover td { background: var(--surface-2); }
 .empty-state-sub { font-size: 13px; }
 
 @media(max-width:640px) {
+  /* Layout */
   .topnav { padding: 0 1rem; }
-  .page { padding: 1.5rem 1rem; }
-  .stats-row { grid-template-columns: 1fr 1fr; }
+  .nav-title { display: none; }
+  .page { padding: 1rem 0.75rem; }
+  .card { padding: 1rem; border-radius: 10px; }
+
+  /* Stats */
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stats-row .stat-box:last-child { grid-column: span 2; }
-  .tabs { width: 100%; flex-wrap: wrap; }
+  .stat-val { font-size: 22px; }
+
+  /* Tabs — scrollable row */
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn { white-space: nowrap; padding: 6px 14px; font-size: 13px; }
+
+  /* Tables — horizontal scroll */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -1rem; padding: 0 1rem; }
+  table { font-size: 12px; min-width: 480px; }
+  th, td { padding: 8px 8px; }
+
+  /* Buttons — larger touch targets */
+  button { height: 40px; font-size: 13px; }
+  button.sm { height: 34px; }
+  .btn-row { gap: 8px; }
+  .btn-row button { flex: 1; justify-content: center; }
+
+  /* Search */
+  .search-wrap { max-width: 100%; }
+  .search-row { flex-direction: column; align-items: stretch; }
+  .search-row .search-wrap { max-width: 100%; }
+
+  /* Inputs */
+  input[type=text], input[type=password] { font-size: 16px; } /* Prevents zoom on iOS */
+  input[type=number] { width: 60px; height: 40px; font-size: 16px; }
+
+  /* Retur editor */
+  .retur-qty-cell { gap: 4px; }
+  .max-lbl { display: none; } /* Skjul max-label på lille skærm */
+  .note-input { font-size: 14px; }
+
+  /* Ordre cards */
+  .ordre-card-header { flex-direction: column; align-items: flex-start; gap: 4px; }
+
+  /* Section header */
+  .section-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+
+  /* Nav email — forkortet */
+  #top-email {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  /* Page title */
+  .page-title { font-size: 22px; }
+  .page-sub { font-size: 13px; }
+
+  /* Sum footer */
+  .sum-footer { flex-direction: column; gap: 4px; font-size: 12px; }
+
+  /* Chat */
+  .bubble { font-size: 13px; }
+  .chat-input-row { flex-direction: column; }
+  .chat-input-row button { width: 100%; }
+}
+
+@media(max-width:400px) {
+  .stats-row { grid-template-columns: 1fr; }
+  .stats-row .stat-box:last-child { grid-column: span 1; }
+  .page { padding: 0.75rem 0.5rem; }
 }
 </style>
 </head>
@@ -626,7 +701,7 @@ tbody tr:hover td { background: var(--surface-2); }
         <span id="soeg-count" style="font-size:12px;color:var(--ink-3);"></span>
       </div>
 
-      <div style="overflow-x:auto;">
+      <div class="table-scroll">
         <table>
           <thead><tr>
             <th style="width:32px;"></th>
@@ -668,13 +743,13 @@ tbody tr:hover td { background: var(--surface-2); }
     <!-- OVERSIGT -->
     <div id="t-o" class="card">
       <div class="stats-row" id="stats"></div>
-      <div id="o-tbl"></div>
+      <div class="table-scroll"><div id="o-tbl"></div></div>
       <div class="divider"></div>
       <button class="primary" onclick="visReturEditor()">Angiv antal retur →</button>
     </div>
 
     <!-- PR ORDRE -->
-    <div id="t-d" class="card" style="display:none;"><div id="d-content"></div></div>
+    <div id="t-d" class="card" style="display:none;"><div class="table-scroll"><div id="d-content"></div></div></div>
 
     <!-- RETURLISTE -->
     <div id="t-r" class="card" style="display:none;">
@@ -1055,17 +1130,40 @@ function beregnFordeling(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
   const ordrer=[...(parsed.ordrer||[])].sort((a,b)=>{
     const pd=s=>{if(!s)return 0;const p=s.split('-');if(p.length===3){const[d,m,y]=p;return new Date(`20${y}`,m-1,d);}return 0;};
-    return pd(a.dato)-pd(b.dato);
+    return pd(b.dato)-pd(a.dato); // Nyeste først
   });
+
+  // Normaliser nøgle — fjern foranstillede nuller og whitespace
+  const nk=v=>(v||'').toString().replace(/^0+/,'').toLowerCase().trim();
+
   const beholdning={};const posMap={};
-  for(const ord of ordrer){beholdning[ord.ordrenr]={};for(const l of ord.linjer||[]){const k=l.varenr||l.navn||'?';beholdning[ord.ordrenr][k]=(beholdning[ord.ordrenr][k]||0)+Number(l.antal)||0;if(l.pos&&!posMap[k])posMap[k]=l.pos;}}
+  for(const ord of ordrer){
+    beholdning[ord.ordrenr]={};
+    for(const l of ord.linjer||[]){
+      const k=nk(l.varenr)||nk(l.navn)||'?';
+      beholdning[ord.ordrenr][k]=(beholdning[ord.ordrenr][k]||0)+Number(l.antal)||0;
+      if(l.pos&&!posMap[k])posMap[k]=l.pos;
+    }
+  }
   const fordeling={};
   for(const ord of ordrer)fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',linjer:[]};
   for(const r of valgte){
-    const k=r.varenr||r.navn||'?';const pos=posMap[k]||r.pos||'';let tilbage=r.returAntal;
-    for(const ord of ordrer){if(tilbage<=0)break;const tilg=beholdning[ord.ordrenr][k]||0;if(tilg<=0)continue;const trk=Math.min(tilg,tilbage);fordeling[ord.ordrenr].linjer.push({pos,varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trk,note:r.note});tilbage-=trk;}
+    const k=nk(r.varenr)||nk(r.navn)||'?';
+    const pos=posMap[k]||r.pos||'';
+    let tilbage=r.returAntal;
+    for(const ord of ordrer){
+      if(tilbage<=0)break;
+      const tilg=beholdning[ord.ordrenr][k]||0;
+      if(tilg<=0)continue;
+      const trk=Math.min(tilg,tilbage);
+      fordeling[ord.ordrenr].linjer.push({pos,varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:trk,note:r.note});
+      tilbage-=trk;
+    }
+    // Fallback: hvis varen ikke matchede nogen ordre, læg den på første ordre
+    if(tilbage===r.returAntal&&ordrer.length>0){
+      fordeling[ordrer[0].ordrenr].linjer.push({pos,varenr:r.varenr,navn:r.navn,enhed:r.enhed,returAntal:r.returAntal,note:r.note});
+    }
   }
-  // Sorter linjer efter pos
   for(const ord of Object.values(fordeling))ord.linjer.sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999));
   return Object.values(fordeling);
 }
@@ -1086,7 +1184,7 @@ function genererRetur(){
     ${valgte.map(r=>`<tr><td>${r.navn}</td><td class="td-mono">${r.varenr||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${r.enhed}</td><td class="td-dim">${r.note||'—'}</td></tr>`).join('')}
   </tbody></table>
   <div class="sum-footer"><span>I alt: ${Math.round(totalRetur)} enheder retur</span><span>Fordelt på ${valgte.length} varelinjer</span></div>`;
-  html+=`<div class="fordeling-wrapper"><div class="fordeling-title">Fordeling pr. ordre</div><div class="fordeling-subtitle">Retur fordelt fra ældste ordre først.</div>`;
+  html+=`<div class="fordeling-wrapper"><div class="fordeling-title">Fordeling pr. ordre</div><div class="fordeling-subtitle">Retur fordelt fra nyeste ordre først.</div>`;
   for(const ord of fordeling){
     const ordTotal=ord.linjer.reduce((s,l)=>s+l.returAntal,0);
     html+=`<div class="ordre-card"><div class="ordre-card-header"><div style="display:flex;align-items:center;gap:10px;"><span class="ordre-nr">${ord.ordrenr}</span>${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}</div>${ordTotal>0?`<span class="ordre-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--ink-3);">Ingen retur</span>'}</div>`;
