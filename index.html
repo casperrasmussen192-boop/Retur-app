@@ -848,6 +848,10 @@ function indlaesSession(session){
     if(session.returlisteHtml){
       document.getElementById('r-content').innerHTML=session.returlisteHtml;
     }
+    // Genopret snapshot til print/copy
+    if(session.returData){
+      window._returSnapshot=session.returData.filter(r=>r.checked&&r.returAntal>0);
+    }
     // Genopret aktiv fane
     if(session.activeTab){
       const tabIdx={'o':0,'d':1,'r':2,'c':3}[session.activeTab]||0;
@@ -1227,10 +1231,14 @@ function genererRetur(){
   document.getElementById('results').style.display='';
   renderPrOrdre();applyGlobalFilter();gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
+  // Gem returData snapshot til print/copy
+  window._returSnapshot = returData.filter(r=>r.checked&&r.returAntal>0);
 }
 
 function copyRetur(){
-  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  const valgte=(returData.filter(r=>r.checked&&r.returAntal>0).length>0
+    ?returData.filter(r=>r.checked&&r.returAntal>0)
+    :window._returSnapshot||[]);
   const cn=document.getElementById('case-num').value;
   const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).join(', ');
   const fordeling=beregnFordeling();
@@ -1242,7 +1250,9 @@ function copyRetur(){
 }
 
 function printRetur(){
-  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
+  const valgte=(returData.filter(r=>r.checked&&r.returAntal>0).length>0
+    ?returData.filter(r=>r.checked&&r.returAntal>0)
+    :window._returSnapshot||[]);
   if(!valgte.length){alert('Ingen varer valgt til retur.');return;}
   const cn=document.getElementById('case-num').value||'ukendt';
   const fordeling=beregnFordeling();
@@ -1341,4 +1351,4 @@ window.addEventListener('pageshow',function(e){
 });
 </script>
 </body>
-</html>
+  </html>
