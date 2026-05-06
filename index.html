@@ -315,10 +315,11 @@ button.ghost {
 button.ghost:hover { background: var(--surface-2); border-color: var(--border); }
 
 /* ── PROGRESS ── */
-.progress-wrap { margin-top: 12px; display: none; }
-.progress-track { height: 3px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
-.progress-fill { height: 3px; background: var(--accent); border-radius: 99px; transition: width .4s cubic-bezier(.4,0,.2,1); }
-.progress-txt { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+.progress-wrap { margin-top: 12px; display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.progress-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
+.progress-fill { height: 6px; background: var(--accent); border-radius: 99px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+.progress-txt { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.progress-pct { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-3); margin-left: auto; }
 
 /* ── SPINNER ── */
 .spin {
@@ -671,8 +672,11 @@ tbody tr:hover td { background: var(--surface-2); }
 
     <div class="error-msg" id="err"></div>
     <div class="progress-wrap" id="pw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div class="progress-txt" id="pt"></div>
+        <span class="progress-pct" id="pp">0%</span>
+      </div>
       <div class="progress-track"><div class="progress-fill" id="pb" style="width:0%"></div></div>
-      <div class="progress-txt" id="pt"></div>
     </div>
 
     <div class="btn-row">
@@ -900,7 +904,13 @@ function clearAll(){
   document.getElementById('err').style.display='none';
   rydSession();
 }
-function setP(pct,txt){document.getElementById('pw').style.display='block';document.getElementById('pb').style.width=pct+'%';document.getElementById('pt').innerHTML=txt;}
+function setP(pct,txt){
+  document.getElementById('pw').style.display='block';
+  document.getElementById('pb').style.width=pct+'%';
+  document.getElementById('pt').innerHTML=txt;
+  const ppEl=document.getElementById('pp');
+  if(ppEl)ppEl.textContent=Math.round(pct)+'%';
+}
 function showErr(msg){const el=document.getElementById('err');el.textContent=msg;el.style.display='block';document.getElementById('pw').style.display='none';}
 function b64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
 
