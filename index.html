@@ -656,7 +656,7 @@ tbody tr:hover td { background: var(--surface-2); }
 
     <div class="field-group" style="max-width:320px;">
       <label class="field-label">Sagsnummer</label>
-      <input type="text" id="case-num" placeholder="f.eks. 255560-CR" onchange="gemSession()"/>
+      <input type="text" id="case-num" placeholder="f.eks. 255560-CR" onchange="gemSession();indlaesReturTotal(this.value)"/>
     </div>
 
     <div class="field-group">
@@ -712,7 +712,8 @@ tbody tr:hover td { background: var(--surface-2); }
             <th>Materiale</th>
             <th>Varenr.</th>
             <th>Købt i alt</th>
-            <th>Antal retur</th>
+            <th style="color:var(--amber)">Ret. i alt</th>
+            <th>Denne retur</th>
             <th>Note</th>
           </tr></thead>
           <tbody id="retur-tbody"></tbody>
@@ -794,6 +795,15 @@ tbody tr:hover td { background: var(--surface-2); }
   });
 })();
 function logout(){localStorage.removeItem('bd_token');localStorage.removeItem('bd_email');window.location.href='/login';}
+
+function indlaesReturTotal(caseNum){
+  if(!caseNum||caseNum==='ukendt')return;
+  try{
+    const raw=localStorage.getItem('bd_retur_total:'+caseNum);
+    if(raw)window._totalReturneret=JSON.parse(raw);
+    else window._totalReturneret={};
+  }catch{window._totalReturneret={};}
+}
 function getApiKey(){return localStorage.getItem('bd_token')||'';}
 
 // ── Session ──
@@ -809,6 +819,7 @@ async function gemSession(){
     caseNum: document.getElementById('case-num')?.value||'',
     parsed,
     returData,
+    totalReturneret: window._totalReturneret||{},
     activeTab,
     returlisteHtml: returlisteHtml.includes('Samlet returliste') ? returlisteHtml : '',
     ts: Date.now()
@@ -840,7 +851,10 @@ async function genopretSession(){
 function indlaesSession(session){
   parsed=session.parsed;ctx=JSON.stringify(parsed);returData=session.returData||[];
   const cnEl=document.getElementById('case-num');
-  if(cnEl&&session.caseNum)cnEl.value=session.caseNum;
+  if(cnEl&&session.caseNum){
+    cnEl.value=session.caseNum;
+    indlaesReturTotal(session.caseNum);
+  }
   if(document.getElementById('results')){
     renderResults(session.caseNum||'');
     document.getElementById('results').style.display='';
@@ -851,6 +865,10 @@ function indlaesSession(session){
     // Genopret snapshot til print/copy — brug hele returData
     if(session.returData&&session.returData.length){
       window._returSnapshot=session.returData.filter(r=>r.checked&&r.returAntal>0);
+    }
+    // Genopret samlet returneret tæller
+    if(session.totalReturneret){
+      window._totalReturneret=session.totalReturneret;
     }
     // Genopret aktiv fane
     if(session.activeTab){
@@ -899,7 +917,9 @@ function renderFiles(){
     </div>`).join('');
 }
 function clearAll(){
-  files=[];parsed=null;ctx='';returData=[];
+  const _clearCn=document.getElementById('case-num')?.value;
+  if(_clearCn)localStorage.removeItem('bd_retur_total:'+_clearCn);
+  files=[];parsed=null;ctx='';returData=[];window._totalReturneret={};window._printData=null;
   renderFiles();
   document.getElementById('ab').disabled=true;
   document.getElementById('results').style.display='none';
@@ -1024,6 +1044,7 @@ async function go(){
   renderResults(caseNum);
   document.getElementById('results').style.display='';
   applyGlobalFilter();
+  indlaesReturTotal(caseNum);
   gemSession();
   document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
 
@@ -1139,12 +1160,19 @@ function renderReturTable(){
   document.getElementById('retur-tbody').innerHTML=returData.map((r,i)=>{
     const vis=!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(),soegTerm);
     if(!vis)return`<tr style="display:none" id="rrow-${i}"></tr>`;
+    const nk=(r.varenr||r.navn||'').toLowerCase().replace(/^0+/,'').trim();
+    const tidlRet=(window._totalReturneret&&window._totalReturneret[nk])||0;
+    const kanRetur=Math.max(0,r.antal-tidlRet);
+    const tidlCell=tidlRet>0
+      ?`<td style="color:var(--amber);font-weight:500;">${Math.round(tidlRet)} ${r.enhed}</td>`
+      :`<td class="td-dim">—</td>`;
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
       <td>${r.navn}</td>
       <td class="td-mono">${r.varenr||'—'}</td>
       <td class="td-dim">${Math.round(r.antal)} ${r.enhed}</td>
-      <td><div class="retur-qty-cell"><input type="number" min="0" max="${r.antal}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(r.antal)}</span></div></td>
+      ${tidlCell}
+      <td><div class="retur-qty-cell"><input type="number" min="0" max="${kanRetur}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(kanRetur)}</span></div></td>
       <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
     </tr>`;
   }).join('');
@@ -1242,6 +1270,17 @@ function genererRetur(){
   document.getElementById('results').style.display='';
   renderPrOrdre();applyGlobalFilter();gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
+  // Opdater samlet returneret tæller — gemt pr. sagsnummer
+  const _cn=document.getElementById('case-num')?.value||'ukendt';
+  const _retKey='bd_retur_total:'+_cn;
+  if(!window._totalReturneret)window._totalReturneret={};
+  returData.filter(r=>r.checked&&r.returAntal>0).forEach(r=>{
+    const k=(r.varenr||r.navn||'').toLowerCase().replace(/^0+/,'').trim();
+    window._totalReturneret[k]=(window._totalReturneret[k]||0)+r.returAntal;
+  });
+  // Gem til localStorage knyttet til sagsnr
+  try{localStorage.setItem(_retKey,JSON.stringify(window._totalReturneret));}catch{}
+
   // Gem permanent kopi af returliste-data til print/copy — uafhængig af returData
   window._printData = {
     valgte: returData.filter(r=>r.checked&&r.returAntal>0).map(r=>({...r})),
