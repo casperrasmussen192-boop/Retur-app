@@ -1100,18 +1100,19 @@ function renderPrOrdre(){
 // ── Retur editor ──
 function visReturEditor(){
   const t=getTotals(),ks=Object.keys(t);
-  // Bevar eksisterende returData hvis det allerede findes
   if(!returData.length){
     returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
   } else {
-    // Tilføj evt. nye varer der ikke allerede er i returData
-    ks.forEach(k=>{
-      if(!returData.find(r=>(r.varenr||r.navn)===k)){
-        returData.push({...t[k],returAntal:0,checked:false,note:''});
-      }
+    // Bevar hvad brugeren har tastet ind — match på varenr eller navn
+    returData=ks.map(k=>{
+      const existing=returData.find(r=>
+        (r.varenr&&t[k].varenr&&r.varenr===t[k].varenr)||
+        (r.navn&&t[k].navn&&r.navn===t[k].navn)
+      );
+      if(existing)return{...t[k],returAntal:existing.returAntal,checked:existing.checked,note:existing.note};
+      return{...t[k],returAntal:0,checked:false,note:''};
     });
   }
-  // Nulstil søgning når editor åbnes
   soegTerm='';
   const si=document.getElementById('soeg-input');
   if(si)si.value='';
@@ -1351,4 +1352,4 @@ window.addEventListener('pageshow',function(e){
 });
 </script>
 </body>
-  </html>
+</html>
