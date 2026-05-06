@@ -1096,9 +1096,21 @@ function renderPrOrdre(){
 // ── Retur editor ──
 function visReturEditor(){
   const t=getTotals(),ks=Object.keys(t);
-  returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
-  soegTerm=globalSearchTerm;
-  const si=document.getElementById('soeg-input');if(si){si.value=globalSearchTerm;filterRetur(globalSearchTerm);}
+  // Bevar eksisterende returData hvis det allerede findes
+  if(!returData.length){
+    returData=ks.map(k=>({...t[k],returAntal:0,checked:false,note:''}));
+  } else {
+    // Tilføj evt. nye varer der ikke allerede er i returData
+    ks.forEach(k=>{
+      if(!returData.find(r=>(r.varenr||r.navn)===k)){
+        returData.push({...t[k],returAntal:0,checked:false,note:''});
+      }
+    });
+  }
+  // Nulstil søgning når editor åbnes
+  soegTerm='';
+  const si=document.getElementById('soeg-input');
+  if(si)si.value='';
   renderReturTable();
   document.getElementById('results').style.display='none';
   document.getElementById('retur-editor').style.display='';
