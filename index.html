@@ -992,7 +992,25 @@ async function go(){
         if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
         const result=await resp.json();
         if(result.error)throw new Error(result.error);
-        if(result.data?.ordrer)alleOrdrer.push(...result.data.ordrer);
+        if(result.data?.ordrer){
+          for(const ord of result.data.ordrer){
+            const existing=alleOrdrer.find(o=>o.ordrenr===ord.ordrenr);
+            if(existing){
+              // Kun undgå nøjagtige dubletter inden for SAMME ordre (samme varenr+pos+antal)
+              for(const l of ord.linjer||[]){
+                const dup=existing.linjer.find(el=>
+                  el.varenr===l.varenr&&
+                  el.pos===l.pos&&
+                  el.antal===l.antal&&
+                  el.navn===l.navn
+                );
+                if(!dup)existing.linjer.push(l);
+              }
+            } else {
+              alleOrdrer.push(ord);
+            }
+          }
+        }
         lykkedes=true;
         if(b<totalBatches-1){await new Promise(r=>setTimeout(r,files.length>100?1800:1200));}
         break;
@@ -1018,7 +1036,24 @@ async function go(){
           if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
           const result=await resp.json();
           if(result.error)throw new Error(result.error);
-          if(result.data?.ordrer)alleOrdrer.push(...result.data.ordrer);
+          if(result.data?.ordrer){
+            for(const ord of result.data.ordrer){
+              const existing=alleOrdrer.find(o=>o.ordrenr===ord.ordrenr);
+              if(existing){
+                for(const l of ord.linjer||[]){
+                  const dup=existing.linjer.find(el=>
+                    el.varenr===l.varenr&&
+                    el.pos===l.pos&&
+                    el.antal===l.antal&&
+                    el.navn===l.navn
+                  );
+                  if(!dup)existing.linjer.push(l);
+                }
+              } else {
+                alleOrdrer.push(ord);
+              }
+            }
+          }
           lykkedes=true;
           await new Promise(r=>setTimeout(r,1500));
           break;
