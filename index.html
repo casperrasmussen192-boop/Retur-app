@@ -821,7 +821,7 @@ async function gemSession(){
     returData,
     totalReturneret: window._totalReturneret||{},
     activeTab,
-    returlisteHtml: returlisteHtml.includes('Samlet returliste') ? returlisteHtml : '',
+    returlisteHtml: returlisteHtml.includes('SAMLET RETURLISTE') || returlisteHtml.includes('Samlet returliste') ? returlisteHtml : '',
     ts: Date.now()
   };
   localStorage.setItem(SESSION_KEY,JSON.stringify(session));
@@ -919,13 +919,17 @@ function renderFiles(){
 function clearAll(){
   const _clearCn=document.getElementById('case-num')?.value;
   if(_clearCn)localStorage.removeItem('bd_retur_total:'+_clearCn);
-  files=[];parsed=null;ctx='';returData=[];window._totalReturneret={};window._printData=null;
+  files=[];parsed=null;ctx='';returData=[];
+  window._totalReturneret={};window._printData=null;window._returSnapshot=null;
   renderFiles();
   document.getElementById('ab').disabled=true;
   document.getElementById('results').style.display='none';
   document.getElementById('retur-editor').style.display='none';
   document.getElementById('pw').style.display='none';
   document.getElementById('err').style.display='none';
+  document.getElementById('case-num').value='';
+  const rc=document.getElementById('r-content');
+  if(rc)rc.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Ingen returliste endnu</div><div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div></div>';
   rydSession();
 }
 function setP(pct,txt){
@@ -951,7 +955,7 @@ async function go(){
 
   // Dynamisk batch-størrelse baseret på antal filer
   // Færre filer pr. batch = mindre hukommelse = mere stabilt for 200+ filer
-  const BATCH_SIZE = files.length > 100 ? 3 : files.length > 50 ? 4 : 5;
+  const BATCH_SIZE = files.length > 100 ? 2 : files.length > 50 ? 3 : 4;
   const alleOrdrer=[];
   const totalBatches=Math.ceil(files.length/BATCH_SIZE);
   const startTime = Date.now();
@@ -1235,11 +1239,15 @@ function toggleRow(i,checked){
 }
 function toggleAll(checked){returData.forEach(r=>r.checked=checked);renderReturTable();updateBadge();}
 function updateQty(i,val){
-  const v=Math.max(0,Math.min(Number(val),returData[i].antal));
-  returData[i].returAntal=v;
+  const r=returData[i];
+  const nk=(r.varenr||r.navn||'').toLowerCase().replace(/^0+/,'').trim();
+  const tidlRet=(window._totalReturneret&&window._totalReturneret[nk])||0;
+  const kanRetur=Math.max(0,r.antal-tidlRet);
+  const v=Math.max(0,Math.min(Number(val),kanRetur));
+  r.returAntal=v;
   document.getElementById('qty-'+i).value=Math.round(v);
-  if(v>0&&!returData[i].checked){returData[i].checked=true;toggleRow(i,true);document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=true;}
-  if(v===0&&returData[i].checked){returData[i].checked=false;toggleRow(i,false);document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=false;}
+  if(v>0&&!r.checked){r.checked=true;toggleRow(i,true);document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=true;}
+  if(v===0&&r.checked){r.checked=false;toggleRow(i,false);document.getElementById('rrow-'+i).querySelector('input[type=checkbox]').checked=false;}
   gemSession();
 }
 function updateBadge(){const n=returData.filter(r=>r.checked).length;document.getElementById('retur-badge').textContent=`${n} vare${n===1?'':'r'} valgt`;}
