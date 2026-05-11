@@ -42,27 +42,28 @@ Udtrækker ALLE varelinjer fra SAP-dokumenterne.
 VIGTIGT om dokumentnumre:
 - Brug KUN ordrenumre der starter med 1010 eller 300. IGNORER fakturanumre der starter med 111.
 - Hvis et dokument kun har et fakturanummer (111...), brug filnavnet som ordrenr i stedet.
-- Hvert ordrenummer må kun optræde ÉN gang i JSON — hvis samme ordrenr ses i flere dokumenter, sammenlæg varelinjerne.
+- Hvert ordrenummer må kun optræde ÉN gang i JSON.
 
 VIGTIGT om varelinjer:
 - Medtag KUN varelinjer fra hoveddelen — IGNORER alt under "Leveres fra et andet lager".
 - For kreditnotaer skal antal være negativt (f.eks. -3).
-- Hver varelinje må kun optræde ÉN gang pr. ordrenummer — ingen dubletter.
+- Brug KUN den første linje af varebeskrivelsen som navn — ignorer eventuelle beskrivelseslinjer under varenr.
+- Hver varelinje må kun optræde ÉN gang pr. ordrenummer.
 
 VIGTIGT om pos.nr:
-- Pos.nr er et 3-cifret nummer (003, 006, 009...) der står i en separat "Pos" kolonne på følgesedler.
-- Inkluder pos.nr KUN hvis kolonnen faktisk er synlig i dokumentet.
-- Sæt "pos": null hvis dokumentet ikke har en pos-kolonne — opfind ALDRIG et pos.nr.
-- Fakturaer (111...) har INGEN pos-kolonne. Følgesedler har den typisk.
+- Pos.nr er et 3-cifret nummer (003, 006, 009...) i en separat "Pos" kolonne.
+- Sæt "pos": null hvis kolonnen ikke er synlig — opfind ALDRIG et pos.nr.
+- Fakturaer har INGEN pos-kolonne. Kun følgesedler har den.
 
 Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`,
+{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<første linje af beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`,
   });
 
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8000,
+      temperature: 0,
       system: "Du er en JSON-generator specialiseret i BD Brødrene Dahl SAP-dokumenter. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
       messages: [{ role: "user", content }],
     });
