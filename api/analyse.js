@@ -23,10 +23,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Ugyldigt login — log ind igen" });
   }
 
-  const { pdfs, caseNum } = req.body;
+  const { pdfs, caseNum, model: reqModel } = req.body;
   if (!pdfs || !Array.isArray(pdfs) || pdfs.length === 0) {
     return res.status(400).json({ error: "Ingen PDF-filer modtaget" });
   }
+
+  // Vælg model — brug Sonnet til præcis analyse, Haiku til test
+  const model = reqModel === "sonnet"
+    ? "claude-sonnet-4-5"
+    : "claude-haiku-4-5-20251001";
 
   const content = pdfs.map((pdf) => ({
     type: "document",
@@ -61,7 +66,7 @@ Returner KUN JSON uden markdown:
 
   try {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5",
+      model: model,
       max_tokens: 8000,
       temperature: 0,
       system: "Du er en JSON-generator specialiseret i BD Brødrene Dahl SAP-dokumenter. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
