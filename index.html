@@ -539,6 +539,15 @@ tbody tr:hover td { background: var(--surface-2); }
 .empty-state-title { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 .empty-state-sub { font-size: 13px; }
 
+.sag-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 8px; cursor: pointer; transition: all .12s; box-shadow: var(--shadow-sm); }
+.sag-card:hover { border-color: var(--accent-mid); background: var(--surface-2); }
+.sag-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.sag-nr { font-size: 15px; font-weight: 600; color: var(--ink); font-family: 'Geist Mono', monospace; }
+.sag-kunde { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.sag-adresse { font-size: 12px; color: var(--ink-3); }
+.sag-meta { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
+.sag-stats { display: flex; gap: 6px; flex-shrink: 0; }
+
 @media(max-width:640px) {
   /* Layout */
   .topnav { padding: 0 1rem; }
@@ -674,8 +683,51 @@ tbody tr:hover td { background: var(--surface-2); }
 </div>
 
 <!-- PAGE -->
-<div class="page" id="main-page">
+<!-- SAGSOVERSIGT -->
+<div id="view-sagsoversigt">
+  <div class="page">
+    <div class="page-header">
+      <h1 class="page-title">Sager</h1>
+      <p class="page-sub">Alle jeres sager — delt mellem hele virksomheden</p>
+    </div>
+
+    <div class="search-row" style="margin-bottom:1.25rem;">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="sag-soeg" placeholder="Søg på sagsnr. eller kunde..." oninput="filterSagListe(this.value)"/>
+      </div>
+      <button class="primary" onclick="visOpretSag()">+ Opret sag</button>
+    </div>
+
+    <!-- Opret sag formular -->
+    <div class="card" id="opret-sag-card" style="display:none;">
+      <div class="card-title"><div class="card-icon">📁</div>Opret ny sag</div>
+      <div class="field-group">
+        <label class="field-label">Sagsnummer</label>
+        <input type="text" id="ny-sag-nr" placeholder="f.eks. 255560-CR"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Kunde (valgfri)</label>
+        <input type="text" id="ny-sag-kunde" placeholder="f.eks. Dueodde Familiecamp"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Adresse (valgfri)</label>
+        <input type="text" id="ny-sag-adresse" placeholder="f.eks. Skrokkegårdsvejen 17, 3730 Nexø"/>
+      </div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="primary" onclick="opretSag()">Opret</button>
+        <button class="ghost" onclick="skjulOpretSag()">Annuller</button>
+      </div>
+      <div class="error-msg" id="opret-sag-err"></div>
+    </div>
+
+    <div id="sag-liste"></div>
+  </div>
+</div>
+
+<div class="page" id="main-page" style="display:none;">
   <div class="page-header">
+    <button class="ghost" onclick="tilbageTilSager()" style="margin-bottom:.75rem;font-size:12px;height:30px;padding:0 12px;">← Alle sager</button>
     <h1 class="page-title">Retur-assistent</h1>
     <p class="page-sub">Upload SAP-følgesedler — angiv retur, få fordeling pr. ordre</p>
   </div>
@@ -689,7 +741,7 @@ tbody tr:hover td { background: var(--surface-2); }
 
     <div class="field-group" style="max-width:320px;">
       <label class="field-label">Sagsnummer</label>
-      <input type="text" id="case-num" placeholder="f.eks. 255560-CR" onchange="gemSession();indlaesReturTotal(this.value)"/>
+      <input type="text" id="case-num" placeholder="f.eks. 255560-CR" readonly style="background:var(--surface-2);cursor:not-allowed;"/>
       <div id="senest-opdateret" style="display:none;font-size:12px;color:var(--ink-3);margin-top:-8px;margin-bottom:1rem;">Senest opdateret af <strong id="senest-opdateret-navn"></strong></div>
     </div>
 
@@ -857,13 +909,19 @@ function getApiKey(){return localStorage.getItem('bd_token')||'';}
 
 // ── Admin panel ──
 function visAdmin(){
+  document.getElementById('view-sagsoversigt').style.display='none';
   document.getElementById('main-page').style.display='none';
   document.getElementById('view-admin').style.display='';
   hentBrugere();
 }
 function skjulAdmin(){
   document.getElementById('view-admin').style.display='none';
-  document.getElementById('main-page').style.display='';
+  if(aktivSagsnummer){
+    document.getElementById('main-page').style.display='';
+  } else {
+    document.getElementById('view-sagsoversigt').style.display='';
+    hentSagListe();
+  }
 }
 async function genererInvite(){
   const apiKey=getApiKey();
@@ -916,17 +974,135 @@ async function fjernBruger(email){
   }catch(e){alert('Fejl: '+e.message);}
 }
 
+// ── Sagsoversigt ──
+let alleSager = [];
+let aktivSagsnummer = null;
+
+async function hentSagListe(){
+  const apiKey=getApiKey();
+  try{
+    const resp=await fetch('/api/sager',{headers:{'Authorization':'Bearer '+apiKey}});
+    const data=await resp.json();
+    alleSager=data.sager||[];
+    renderSagListe();
+  }catch(e){
+    document.getElementById('sag-liste').innerHTML='<p style="font-size:13px;color:var(--red);">Kunne ikke hente sager: '+e.message+'</p>';
+  }
+}
+
+function renderSagListe(term){
+  const el=document.getElementById('sag-liste');
+  const t=(term||'').toLowerCase().trim();
+  const vis=alleSager.filter(s=>!t||s.sagsnummer.toLowerCase().includes(t)||s.kunde.toLowerCase().includes(t));
+  if(!alleSager.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-title">Ingen sager endnu</div><div class="empty-state-sub">Tryk "+ Opret sag" for at komme i gang</div></div>';
+    return;
+  }
+  if(!vis.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--ink-3);text-align:center;padding:2rem;">Ingen sager matcher søgningen.</p>';
+    return;
+  }
+  el.innerHTML=vis.map(s=>{
+    const dato=s.sidstOpdateretTs?new Date(s.sidstOpdateretTs).toLocaleDateString('da-DK'):'';
+    return `<div class="sag-card" onclick="aabnSag('${s.sagsnummer.replace(/'/g,"\\'")}')">
+      <div class="sag-card-top">
+        <div>
+          <div class="sag-nr">${s.sagsnummer}</div>
+          ${s.kunde?`<div class="sag-kunde">${s.kunde}</div>`:''}
+          ${s.adresse?`<div class="sag-adresse">${s.adresse}</div>`:''}
+        </div>
+        <div class="sag-stats">
+          ${s.ordrer?`<span class="badge b-blue">${s.ordrer} ordrer</span>`:''}
+          ${s.returneringer?`<span class="badge b-green">${s.returneringer} retur</span>`:''}
+        </div>
+      </div>
+      <div class="sag-meta">Senest opdateret ${dato?dato+' · ':''}af ${s.sidstOpdateretAf||s.oprettetAf||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterSagListe(val){ renderSagListe(val); }
+
+function visOpretSag(){
+  document.getElementById('opret-sag-card').style.display='';
+  document.getElementById('ny-sag-nr').focus();
+}
+function skjulOpretSag(){
+  document.getElementById('opret-sag-card').style.display='none';
+  document.getElementById('ny-sag-nr').value='';
+  document.getElementById('ny-sag-kunde').value='';
+  document.getElementById('ny-sag-adresse').value='';
+  document.getElementById('opret-sag-err').style.display='none';
+}
+
+async function opretSag(){
+  const nr=document.getElementById('ny-sag-nr').value.trim();
+  const kunde=document.getElementById('ny-sag-kunde').value.trim();
+  const adresse=document.getElementById('ny-sag-adresse').value.trim();
+  const errEl=document.getElementById('opret-sag-err');
+  errEl.style.display='none';
+  if(!nr){errEl.textContent='Angiv sagsnummer';errEl.style.display='block';return;}
+  const apiKey=getApiKey();
+  try{
+    const resp=await fetch('/api/sager',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:nr,kunde,adresse})});
+    const data=await resp.json();
+    if(!resp.ok){errEl.textContent=data.error||'Kunne ikke oprette sag';errEl.style.display='block';return;}
+    skjulOpretSag();
+    await hentSagListe();
+    aabnSag(nr);
+  }catch(e){errEl.textContent='Fejl: '+e.message;errEl.style.display='block';}
+}
+
+async function aabnSag(sagsnummer){
+  aktivSagsnummer=sagsnummer;
+  document.getElementById('view-sagsoversigt').style.display='none';
+  document.getElementById('main-page').style.display='';
+  document.getElementById('case-num').value=sagsnummer;
+  // Nulstil lokal tilstand fra evt. tidligere åben sag
+  files=[];parsed=null;ctx='';returData=[];
+  window._totalReturneret={};window._printData=null;window._returSnapshot=null;
+  renderFiles();
+  document.getElementById('results').style.display='none';
+  document.getElementById('retur-editor').style.display='none';
+  document.getElementById('ab').disabled=true;
+  const rc=document.getElementById('r-content');
+  if(rc)rc.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Ingen returliste endnu</div><div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div></div>';
+  const so=document.getElementById('senest-opdateret');
+  if(so)so.style.display='none';
+
+  indlaesReturTotal(sagsnummer);
+  await genopretSession(sagsnummer);
+}
+
+function tilbageTilSager(){
+  aktivSagsnummer=null;
+  document.getElementById('main-page').style.display='none';
+  document.getElementById('view-sagsoversigt').style.display='';
+  hentSagListe();
+}
+
+async function opdaterSagMeta(){
+  if(!aktivSagsnummer)return;
+  const apiKey=getApiKey();
+  const ordrer=(parsed?.ordrer||[]).length;
+  const enheder=Object.values(getTotals()).reduce((s,v)=>s+v.antal,0);
+  const returneringer=returData.filter(r=>r.checked&&r.returAntal>0).length;
+  try{
+    await fetch('/api/sager',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,ordrer,enheder:Math.round(enheder),returneringer})});
+  }catch(e){}
+}
+
 // ── Session ──
-const SESSION_KEY='bd_session';
+function sessionKey(){ return 'bd_session:'+(aktivSagsnummer||'ukendt'); }
 async function gemSession(){
-  if(!parsed)return;
+  if(!parsed||!aktivSagsnummer)return;
   const activeTab = ['o','d','r','c'].find(t => {
     const el = document.getElementById('t-'+t);
     return el && el.style.display !== 'none';
   }) || 'o';
   const returlisteHtml = document.getElementById('r-content')?.innerHTML || '';
   const session={
-    caseNum: document.getElementById('case-num')?.value||'',
+    caseNum: aktivSagsnummer,
     parsed,
     returData,
     totalReturneret: window._totalReturneret||{},
@@ -934,27 +1110,28 @@ async function gemSession(){
     returlisteHtml: returlisteHtml.includes('SAMLET RETURLISTE') || returlisteHtml.includes('Samlet returliste') ? returlisteHtml : '',
     ts: Date.now()
   };
-  localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  localStorage.setItem(sessionKey(),JSON.stringify(session));
   try{
     const token=getApiKey();
-    if(token)await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({session})});
+    if(token)await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({session,sagsnummer:aktivSagsnummer})});
   }catch{}
+  opdaterSagMeta();
 }
-async function genopretSession(){
-  if(parsed)return;
+async function genopretSession(sagsnummer){
+  const sag=sagsnummer||aktivSagsnummer;
+  if(!sag)return;
   try{
     const token=getApiKey();
     if(token){
-      const resp=await fetch('/api/session',{headers:{'Authorization':'Bearer '+token}});
+      const resp=await fetch('/api/session?sag='+encodeURIComponent(sag),{headers:{'Authorization':'Bearer '+token}});
       if(resp.ok){const data=await resp.json();if(data.session?.parsed){indlaesSession(data.session);return;}}
     }
   }catch{}
   try{
-    const raw=localStorage.getItem(SESSION_KEY);
+    const raw=localStorage.getItem('bd_session:'+sag);
     if(!raw)return;
     const session=JSON.parse(raw);
     if(!session?.parsed)return;
-    // Session gemmes indtil brugeren selv sletter den
     indlaesSession(session);
   }catch{}
 }
@@ -1002,8 +1179,8 @@ function indlaesSession(session){
   }
 }
 async function rydSession(){
-  localStorage.removeItem(SESSION_KEY);
-  try{const token=getApiKey();if(token)await fetch('/api/session',{method:'DELETE',headers:{'Authorization':'Bearer '+token}});}catch{}
+  if(aktivSagsnummer)localStorage.removeItem('bd_session:'+aktivSagsnummer);
+  try{const token=getApiKey();if(token&&aktivSagsnummer)await fetch('/api/session',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({sagsnummer:aktivSagsnummer})});}catch{}
 }
 
 // ── State ──
@@ -1036,8 +1213,7 @@ function renderFiles(){
     </div>`).join('');
 }
 function clearAll(){
-  const _clearCn=document.getElementById('case-num')?.value;
-  if(_clearCn)localStorage.removeItem('bd_retur_total:'+_clearCn);
+  if(aktivSagsnummer)localStorage.removeItem('bd_retur_total:'+aktivSagsnummer);
   files=[];parsed=null;ctx='';returData=[];
   window._totalReturneret={};window._printData=null;window._returSnapshot=null;
   renderFiles();
@@ -1046,9 +1222,10 @@ function clearAll(){
   document.getElementById('retur-editor').style.display='none';
   document.getElementById('pw').style.display='none';
   document.getElementById('err').style.display='none';
-  document.getElementById('case-num').value='';
   const rc=document.getElementById('r-content');
   if(rc)rc.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Ingen returliste endnu</div><div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div></div>';
+  const so=document.getElementById('senest-opdateret');
+  if(so)so.style.display='none';
   rydSession();
 }
 function setP(pct,txt){
@@ -1573,21 +1750,15 @@ async function doChat(){
   area.scrollTop=area.scrollHeight;
 }
 
-// ── Session restore ──
+// ── Opstart: vis sagsoversigt ──
 window.addEventListener('load',function(){
   setTimeout(function(){
-    if(document.getElementById('case-num')&&document.getElementById('results')){
-      genopretSession();
-    }
+    hentSagListe();
   },200);
 });
 window.addEventListener('pageshow',function(e){
-  if(e.persisted||performance.getEntriesByType('navigation')[0]?.type==='back_forward'){
-    setTimeout(function(){
-      if(!parsed&&document.getElementById('case-num')&&document.getElementById('results')){
-        genopretSession();
-      }
-    },100);
+  if((e.persisted||performance.getEntriesByType('navigation')[0]?.type==='back_forward')&&!aktivSagsnummer){
+    setTimeout(function(){ hentSagListe(); },100);
   }
 });
 </script>
