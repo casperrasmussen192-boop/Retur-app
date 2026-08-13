@@ -1,162 +1,45 @@
-<!DOCTYPE html>
-<html lang="da">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ReturnFlow — Log ind</title>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{--ink:#0a0a0a;--ink-2:#525252;--ink-3:#a3a3a3;--paper:#fafaf9;--surface:#fff;--border:#e7e5e4;--accent:#0f4c81;--accent-light:#e8f0f9;--radius:8px;--radius-sm:5px;--radius-lg:12px;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Geist',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;max-width:400px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.1);}
-.logo{width:36px;height:36px;background:var(--accent);color:#fff;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;border-radius:8px;margin-bottom:1rem;}
-h1{font-family:'Instrument Serif',serif;font-size:26px;font-weight:400;margin-bottom:4px;}
-.sub{font-size:13px;color:var(--ink-3);margin-bottom:1.5rem;}
-.tabs{display:flex;gap:2px;margin-bottom:1.5rem;background:#f5f5f4;border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;}
-.tab{flex:1;text-align:center;font-size:13px;padding:7px;border-radius:4px;cursor:pointer;color:var(--ink-3);}
-.tab.active{background:#fff;color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.05);}
-label{display:block;font-size:12px;font-weight:500;color:var(--ink-2);margin-bottom:6px;}
-input{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-family:inherit;font-size:14px;outline:none;margin-bottom:1rem;}
-input:focus{border-color:var(--accent);}
-.subtabs{display:flex;gap:16px;margin-bottom:1rem;font-size:13px;}
-.subtab{color:var(--ink-3);cursor:pointer;padding-bottom:4px;border-bottom:2px solid transparent;}
-.subtab.active{color:var(--accent);border-color:var(--accent);font-weight:500;}
-button{width:100%;height:40px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;}
-button:hover{background:#0d4070;}
-button:disabled{opacity:.5;cursor:not-allowed;}
-.err{display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:13px;padding:8px 12px;border-radius:6px;margin-bottom:1rem;}
-.hint{font-size:11px;color:var(--ink-3);margin-top:-6px;margin-bottom:1rem;}
-.section{display:none;}
-.section.active{display:block;}
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="logo">BD</div>
-  <h1>ReturnFlow</h1>
-  <div class="sub">Log ind eller opret en konto</div>
+// api/login.js
+import { Redis } from "@upstash/redis";
+import bcrypt from "bcryptjs";
 
-  <div class="tabs">
-    <div class="tab active" onclick="sw('login')">Log ind</div>
-    <div class="tab" onclick="sw('opret')">Opret konto</div>
-  </div>
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
-  <div class="err" id="err"></div>
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  <!-- LOGIN -->
-  <div class="section active" id="s-login">
-    <label>Email</label>
-    <input type="email" id="li-email" placeholder="dig@firma.dk"/>
-    <label>Adgangskode</label>
-    <input type="password" id="li-pass"/>
-    <button onclick="doLogin()">Log ind</button>
-  </div>
-
-  <!-- OPRET -->
-  <div class="section" id="s-opret">
-    <div class="subtabs">
-      <div class="subtab active" onclick="swSub('firma')">Opret virksomhed</div>
-      <div class="subtab" onclick="swSub('invite')">Jeg har en kode</div>
-    </div>
-
-    <div id="sub-firma">
-      <label>Virksomhedsnavn</label>
-      <input type="text" id="op-firmanavn" placeholder="f.eks. Flemming Svendsen VVS ApS"/>
-    </div>
-    <div id="sub-invite" style="display:none;">
-      <label>Invitationskode</label>
-      <input type="text" id="op-kode" placeholder="f.eks. 7K2P9X" style="text-transform:uppercase;"/>
-      <div class="hint">Fået af din administrator</div>
-    </div>
-
-    <label>Dit navn</label>
-    <input type="text" id="op-navn" placeholder="Casper Rasmussen"/>
-    <label>Email</label>
-    <input type="email" id="op-email" placeholder="dig@firma.dk"/>
-    <label>Adgangskode</label>
-    <input type="password" id="op-pass"/>
-    <button onclick="doRegister()">Opret konto</button>
-  </div>
-</div>
-
-<script>
-let regMode = 'firma';
-
-function sw(tab) {
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('s-'+tab).classList.add('active');
-  document.getElementById('err').style.display='none';
-}
-
-function swSub(mode) {
-  regMode = mode;
-  document.querySelectorAll('.subtab').forEach(t=>t.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('sub-firma').style.display = mode==='firma' ? '' : 'none';
-  document.getElementById('sub-invite').style.display = mode==='invite' ? '' : 'none';
-}
-
-function showErr(msg) {
-  const el = document.getElementById('err');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-async function doLogin() {
-  const email = document.getElementById('li-email').value.trim();
-  const password = document.getElementById('li-pass').value;
-  if (!email || !password) return showErr('Udfyld email og adgangskode');
-  try {
-    const resp = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, password})
-    });
-    const data = await resp.json();
-    if (!resp.ok) return showErr(data.error || 'Login fejlede');
-    localStorage.setItem('bd_token', data.token);
-    localStorage.setItem('bd_email', data.email);
-    localStorage.setItem('bd_navn', data.navn);
-    localStorage.setItem('bd_firma', data.firmaNavn);
-    localStorage.setItem('bd_rolle', data.rolle);
-    window.location.href = '/';
-  } catch (e) { showErr('Fejl: ' + e.message); }
-}
-
-async function doRegister() {
-  const navn = document.getElementById('op-navn').value.trim();
-  const email = document.getElementById('op-email').value.trim();
-  const password = document.getElementById('op-pass').value;
-  if (!navn || !email || !password) return showErr('Udfyld alle felter');
-
-  const body = { mode: regMode, navn, email, password };
-  if (regMode === 'firma') {
-    const firmaNavn = document.getElementById('op-firmanavn').value.trim();
-    if (!firmaNavn) return showErr('Angiv virksomhedsnavn');
-    body.firmaNavn = firmaNavn;
-  } else {
-    const kode = document.getElementById('op-kode').value.trim();
-    if (!kode) return showErr('Angiv invitationskode');
-    body.inviteKode = kode;
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Udfyld email og adgangskode" });
   }
 
-  try {
-    const resp = await fetch('/api/register', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    });
-    const data = await resp.json();
-    if (!resp.ok) return showErr(data.error || 'Registrering fejlede');
-    // Log ind automatisk
-    document.getElementById('li-email').value = email;
-    document.getElementById('li-pass').value = password;
-    await doLogin();
-  } catch (e) { showErr('Fejl: ' + e.message); }
+  const emailKey = "bruger:" + email.toLowerCase().trim();
+  const brugerRaw = await redis.get(emailKey);
+  if (!brugerRaw) {
+    return res.status(401).json({ error: "Forkert email eller adgangskode" });
+  }
+  const bruger = typeof brugerRaw === "string" ? JSON.parse(brugerRaw) : brugerRaw;
+
+  const ok = await bcrypt.compare(password, bruger.passwordHash);
+  if (!ok) {
+    return res.status(401).json({ error: "Forkert email eller adgangskode" });
+  }
+
+  // Hent firmanavn til visning
+  const firmaRaw = await redis.get("firma:" + bruger.firmaId);
+  const firma = firmaRaw ? (typeof firmaRaw === "string" ? JSON.parse(firmaRaw) : firmaRaw) : null;
+
+  // Token indeholder nu firmaId og rolle — bruges til at afgøre adgang og datafiltrering
+  const tokenPayload = {
+    email: bruger.email,
+    navn: bruger.navn,
+    firmaId: bruger.firmaId,
+    rolle: bruger.rolle,
+    firmaNavn: firma?.navn || "",
+  };
+  const token = Buffer.from(JSON.stringify(tokenPayload)).toString("base64");
+
+  return res.status(200).json({ success: true, token, ...tokenPayload });
 }
-</script>
-</body>
-</html>
