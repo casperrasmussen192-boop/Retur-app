@@ -1,6 +1,6 @@
 // api/session.js
-// Session gemmes pr. FIRMA (ikke pr. bruger) — alle montører deler samme sager
-// Gemmer også hvem der senest oprettede/opdaterede
+// Session gemmes pr. SAG under firmaet — så flere sager kan eksistere side om side
+// Nøgle: session:{firmaId}:{sagsnummer}
 
 import { Redis } from "@upstash/redis";
 
@@ -19,11 +19,20 @@ function getUser(req) {
   } catch { return null; }
 }
 
+function normSag(s) {
+  return (s || "UKENDT").toString().trim().toUpperCase();
+}
+
 export default async function handler(req, res) {
   const user = getUser(req);
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
 
-  const key = "session:" + user.firmaId;
+  // Sagsnummer sendes som query param (GET) eller i body (POST/DELETE)
+  const sagsnummer = req.method === "GET"
+    ? normSag(req.query.sag)
+    : normSag(req.body?.sagsnummer || req.body?.session?.caseNum);
+
+  const key = "session:" + user.firmaId + ":" + sagsnummer;
 
   if (req.method === "GET") {
     try {
@@ -40,7 +49,6 @@ export default async function handler(req, res) {
     try {
       const { session } = req.body;
       if (!session) return res.status(400).json({ error: "Ingen session data" });
-      // Stemp hvem der senest opdaterede
       session.senestOpdateretAf = user.navn || user.email;
       session.senestOpdateretTs = Date.now();
       await redis.set(key, JSON.stringify(session)); // Ingen udløb
