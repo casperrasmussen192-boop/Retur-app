@@ -1,5 +1,6 @@
 // api/session.js
-// Gem og hent session fra Upstash — så data er tilgængeligt på tværs af enheder
+// Session gemmes pr. FIRMA (ikke pr. bruger) — alle montører deler samme sager
+// Gemmer også hvem der senest oprettede/opdaterede
 
 import { Redis } from "@upstash/redis";
 
@@ -14,7 +15,7 @@ function getUser(req) {
     if (!auth || !auth.startsWith("Bearer ")) return null;
     const token = auth.split(" ")[1];
     const user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-    return user?.email ? user : null;
+    return user?.email && user?.firmaId ? user : null;
   } catch { return null; }
 }
 
@@ -22,9 +23,8 @@ export default async function handler(req, res) {
   const user = getUser(req);
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
 
-  const key = `session:${user.email}`;
+  const key = "session:" + user.firmaId;
 
-  // GET — hent gemt session
   if (req.method === "GET") {
     try {
       const raw = await redis.get(key);
@@ -36,20 +36,20 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST — gem session
   if (req.method === "POST") {
     try {
       const { session } = req.body;
       if (!session) return res.status(400).json({ error: "Ingen session data" });
-      // Gem i 7 dage
-      await redis.set(key, JSON.stringify(session)); // Ingen udløb — gemmes indtil brugeren sletter
+      // Stemp hvem der senest opdaterede
+      session.senestOpdateretAf = user.navn || user.email;
+      session.senestOpdateretTs = Date.now();
+      await redis.set(key, JSON.stringify(session)); // Ingen udløb
       return res.status(200).json({ ok: true });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   }
 
-  // DELETE — slet session
   if (req.method === "DELETE") {
     try {
       await redis.del(key);
