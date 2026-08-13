@@ -30,17 +30,20 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
   if (user.rolle !== "admin") return res.status(403).json({ error: "Kun administratorer kan gøre dette" });
 
-  // POST — generer ny invitationskode
+  // POST — generer ny invitationskode (montør eller admin)
   if (req.method === "POST") {
+    const { rolle } = req.body || {};
+    const inviteRolle = rolle === "admin" ? "admin" : "montoer";
     const kode = genKode();
     const invite = {
       firmaId: user.firmaId,
       oprettetAf: user.email,
       oprettet: new Date().toISOString(),
+      rolle: inviteRolle,
     };
     // Koden udløber efter 7 dage hvis den ikke bruges
     await redis.set("invite:" + kode, JSON.stringify(invite), { ex: 7 * 24 * 60 * 60 });
-    return res.status(200).json({ success: true, kode });
+    return res.status(200).json({ success: true, kode, rolle: inviteRolle });
   }
 
   // GET — liste over brugere i firmaet
@@ -57,7 +60,25 @@ export default async function handler(req, res) {
     return res.status(200).json({ brugere });
   }
 
-  // DELETE — fjern en montør fra firmaet
+  // PATCH — forfrem en montør til admin (eller degrader en admin til montør)
+  if (req.method === "PATCH") {
+    const { email, rolle } = req.body || {};
+    if (!email || !rolle) return res.status(400).json({ error: "Angiv email og rolle" });
+    if (!["admin", "montoer"].includes(rolle)) return res.status(400).json({ error: "Ugyldig rolle" });
+    if (email.toLowerCase() === user.email.toLowerCase()) {
+      return res.status(400).json({ error: "Du kan ikke ændre din egen rolle" });
+    }
+    const targetKey = "bruger:" + email.toLowerCase();
+    const raw = await redis.get(targetKey);
+    if (!raw) return res.status(404).json({ error: "Bruger findes ikke" });
+    const target = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (target.firmaId !== user.firmaId) return res.status(403).json({ error: "Brugeren tilhører ikke jeres virksomhed" });
+    target.rolle = rolle;
+    await redis.set(targetKey, JSON.stringify(target));
+    return res.status(200).json({ success: true });
+  }
+
+  // DELETE — fjern en bruger fra firmaet
   if (req.method === "DELETE") {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Angiv email" });
