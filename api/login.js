@@ -8,28 +8,38 @@ const redis = new Redis({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Udfyld email og adgangskode" });
+  }
 
-  if (!email || !password)
-    return res.status(400).json({ error: "Email og adgangskode påkrævet" });
-
-  const key = `user:${email.toLowerCase()}`;
-  const raw = await redis.get(key);
-
-  if (!raw)
+  const emailKey = "bruger:" + email.toLowerCase().trim();
+  const brugerRaw = await redis.get(emailKey);
+  if (!brugerRaw) {
     return res.status(401).json({ error: "Forkert email eller adgangskode" });
+  }
+  const bruger = typeof brugerRaw === "string" ? JSON.parse(brugerRaw) : brugerRaw;
 
-  const user = typeof raw === "string" ? JSON.parse(raw) : raw;
-  const ok = await bcrypt.compare(password, user.passwordHash);
-
-  if (!ok)
+  const ok = await bcrypt.compare(password, bruger.passwordHash);
+  if (!ok) {
     return res.status(401).json({ error: "Forkert email eller adgangskode" });
+  }
 
-  const token = Buffer.from(JSON.stringify({
-    email: user.email, active: user.active, plan: user.plan, ts: Date.now(),
-  })).toString("base64");
+  // Hent firmanavn til visning
+  const firmaRaw = await redis.get("firma:" + bruger.firmaId);
+  const firma = firmaRaw ? (typeof firmaRaw === "string" ? JSON.parse(firmaRaw) : firmaRaw) : null;
 
-  return res.status(200).json({ token, email: user.email, plan: user.plan });
+  // Token indeholder nu firmaId og rolle — bruges til at afgøre adgang og datafiltrering
+  const tokenPayload = {
+    email: bruger.email,
+    navn: bruger.navn,
+    firmaId: bruger.firmaId,
+    rolle: bruger.rolle,
+    firmaNavn: firma?.navn || "",
+  };
+  const token = Buffer.from(JSON.stringify(tokenPayload)).toString("base64");
+
+  return res.status(200).json({ success: true, token, ...tokenPayload });
 }
