@@ -58,6 +58,7 @@ export default async function handler(req, res) {
         sagsnummer: sagsnummer.trim(),
         kunde: kunde || "",
         adresse: adresse || "",
+        status: "aktiv",
         oprettetAf: user.navn || user.email,
         oprettetTs: Date.now(),
         sidstOpdateretAf: user.navn || user.email,
@@ -73,19 +74,29 @@ export default async function handler(req, res) {
     }
   }
 
-  // PATCH — opdater sags-metadata (kaldes automatisk når man analyserer/genererer retur)
+  // PATCH — opdater sags-metadata ELLER skift status (afslut/genåbn)
   if (req.method === "PATCH") {
     try {
-      const { sagsnummer, ordrer, enheder, returneringer } = req.body;
+      const { sagsnummer, ordrer, enheder, returneringer, status } = req.body;
       if (!sagsnummer) return res.status(400).json({ error: "Angiv sagsnummer" });
       const key = normSag(sagsnummer);
       const raw = await redis.hget(hashKey, key);
       const sag = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {
-        sagsnummer, kunde: "", adresse: "", oprettetAf: user.navn || user.email, oprettetTs: Date.now(),
+        sagsnummer, kunde: "", adresse: "", status: "aktiv", oprettetAf: user.navn || user.email, oprettetTs: Date.now(),
       };
       if (ordrer !== undefined) sag.ordrer = ordrer;
       if (enheder !== undefined) sag.enheder = enheder;
       if (returneringer !== undefined) sag.returneringer = returneringer;
+      if (status !== undefined && ["aktiv", "afsluttet"].includes(status)) {
+        sag.status = status;
+        if (status === "afsluttet") {
+          sag.afsluttetAf = user.navn || user.email;
+          sag.afsluttetTs = Date.now();
+        } else {
+          sag.afsluttetAf = null;
+          sag.afsluttetTs = null;
+        }
+      }
       sag.sidstOpdateretAf = user.navn || user.email;
       sag.sidstOpdateretTs = Date.now();
       await redis.hset(hashKey, { [key]: JSON.stringify(sag) });
