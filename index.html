@@ -649,11 +649,19 @@ tbody tr:hover td { background: var(--surface-2); }
       <p class="page-sub">Administrer hvem der har adgang til jeres sager</p>
     </div>
     <div class="card">
-      <div class="card-title"><div class="card-icon">👥</div>Inviter en ny montør</div>
-      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Generer en engangskode som montøren bruger til at oprette sin konto.</p>
+      <div class="card-title"><div class="card-icon">👥</div>Inviter en ny bruger</div>
+      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Generer en engangskode som personen bruger til at oprette sin konto.</p>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:1rem;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="invite-rolle" value="montoer" checked style="width:15px;height:15px;"/> Montør
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="invite-rolle" value="admin" style="width:15px;height:15px;"/> Admin
+        </label>
+      </div>
       <button class="primary" onclick="genererInvite()">Generer invitationskode</button>
       <div id="invite-resultat" style="display:none;margin-top:1rem;padding:14px;background:var(--accent-light);border:1px solid #bfdbfe;border-radius:8px;">
-        <div style="font-size:12px;color:var(--ink-2);margin-bottom:4px;">Send denne kode til montøren — den udløber om 7 dage:</div>
+        <div style="font-size:12px;color:var(--ink-2);margin-bottom:4px;">Send denne kode — den udløber om 7 dage:</div>
         <div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;color:var(--accent);letter-spacing:.1em;" id="invite-kode"></div>
       </div>
     </div>
@@ -859,8 +867,9 @@ function skjulAdmin(){
 }
 async function genererInvite(){
   const apiKey=getApiKey();
+  const rolle=document.querySelector('input[name=invite-rolle]:checked')?.value||'montoer';
   try{
-    const resp=await fetch('/api/invite',{method:'POST',headers:{'Authorization':'Bearer '+apiKey}});
+    const resp=await fetch('/api/invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({rolle})});
     const data=await resp.json();
     if(!resp.ok){alert(data.error||'Kunne ikke generere kode');return;}
     document.getElementById('invite-kode').textContent=data.kode;
@@ -874,17 +883,29 @@ async function hentBrugere(){
     const data=await resp.json();
     if(!resp.ok){document.getElementById('bruger-liste').innerHTML='<p style="font-size:13px;color:var(--red);">'+(data.error||'Fejl')+'</p>';return;}
     document.getElementById('bruger-liste').innerHTML=(data.brugere||[]).map(b=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">
         <div>
           <div style="font-size:13px;font-weight:500;">${b.navn}</div>
           <div style="font-size:12px;color:var(--ink-3);">${b.email}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
           <span class="badge ${b.rolle==='admin'?'b-blue':'b-green'}">${b.rolle==='admin'?'Admin':'Montør'}</span>
-          ${b.rolle!=='admin'?`<button class="danger" style="font-size:12px;height:28px;padding:0 10px;" onclick="fjernBruger('${b.email}')">Fjern</button>`:''}
+          <button class="ghost" style="font-size:12px;height:28px;padding:0 10px;" onclick="skiftRolle('${b.email}','${b.rolle==='admin'?'montoer':'admin'}')">${b.rolle==='admin'?'Gør til montør':'Gør til admin'}</button>
+          <button class="danger" style="font-size:12px;height:28px;padding:0 10px;" onclick="fjernBruger('${b.email}')">Fjern</button>
         </div>
       </div>`).join('')||'<p style="font-size:13px;color:var(--ink-3);">Ingen brugere fundet.</p>';
   }catch(e){document.getElementById('bruger-liste').innerHTML='<p style="font-size:13px;color:var(--red);">Fejl: '+e.message+'</p>';}
+}
+async function skiftRolle(email,nyRolle){
+  const tekst=nyRolle==='admin'?'Gør '+email+' til admin?':'Gør '+email+' til montør?';
+  if(!confirm(tekst))return;
+  const apiKey=getApiKey();
+  try{
+    const resp=await fetch('/api/invite',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({email,rolle:nyRolle})});
+    const data=await resp.json();
+    if(!resp.ok){alert(data.error||'Kunne ikke ændre rolle');return;}
+    hentBrugere();
+  }catch(e){alert('Fejl: '+e.message);}
 }
 async function fjernBruger(email){
   if(!confirm('Fjern '+email+' fra virksomheden?'))return;
