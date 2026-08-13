@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       navn,
       passwordHash,
       firmaId: invite.firmaId,
-      rolle: "montoer",
+      rolle: invite.rolle === "admin" ? "admin" : "montoer",
       oprettet: new Date().toISOString(),
     };
     await redis.set(emailKey, JSON.stringify(bruger));
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
     // Engangskode — slet efter brug
     await redis.del("invite:" + inviteKode.toUpperCase().trim());
 
-    return res.status(200).json({ success: true, firmaId: invite.firmaId, rolle: "montoer" });
+    return res.status(200).json({ success: true, firmaId: invite.firmaId, rolle: bruger.rolle });
   }
 
   return res.status(400).json({ error: "Ugyldig registreringstype" });
