@@ -36,6 +36,13 @@ export default async function handler(req, res) {
   if (mode === "firma") {
     if (!firmaNavn) return res.status(400).json({ error: "Angiv virksomhedsnavn" });
 
+    // Normaliser navnet — så "BD VVS", "bd vvs" og " BD VVS " tælles som samme navn
+    const navnNorm = firmaNavn.toLowerCase().trim().replace(/\s+/g, " ");
+    const findesAllerede = await redis.sismember("firma_navne", navnNorm);
+    if (findesAllerede) {
+      return res.status(400).json({ error: "Der findes allerede en virksomhed med dette navn. Bed din administrator om en invitationskode i stedet." });
+    }
+
     const firmaId = genFirmaId();
     const firma = {
       firmaId,
@@ -45,6 +52,7 @@ export default async function handler(req, res) {
     };
     await redis.set("firma:" + firmaId, JSON.stringify(firma));
     await redis.sadd("firma:" + firmaId + ":brugere", email.toLowerCase().trim());
+    await redis.sadd("firma_navne", navnNorm); // Registrer navnet som taget
 
     const bruger = {
       email: email.toLowerCase().trim(),
