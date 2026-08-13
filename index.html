@@ -720,13 +720,21 @@ tbody tr:hover td { background: var(--surface-2); }
       <div class="error-msg" id="opret-sag-err"></div>
     </div>
 
+    <div class="tabs" style="margin-bottom:1rem;">
+      <button class="tab-btn active" id="tab-aktive" onclick="switchSagTab('aktiv',this)">Aktive</button>
+      <button class="tab-btn" id="tab-afsluttede" onclick="switchSagTab('afsluttet',this)">Afsluttede</button>
+    </div>
+
     <div id="sag-liste"></div>
   </div>
 </div>
 
 <div class="page" id="main-page" style="display:none;">
   <div class="page-header">
-    <button class="ghost" onclick="tilbageTilSager()" style="margin-bottom:1rem;font-size:15px;font-weight:500;height:42px;padding:0 18px;">← Ordreoversigt</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+      <button class="ghost" onclick="tilbageTilSager()" style="font-size:15px;font-weight:500;height:42px;padding:0 18px;">← Ordreoversigt</button>
+      <button class="ghost" onclick="afslutAktivSag()" style="font-size:13px;height:36px;padding:0 14px;">✓ Afslut sag</button>
+    </div>
   </div>
 
   <!-- UPLOAD CARD -->
@@ -974,6 +982,7 @@ async function fjernBruger(email){
 // ── Sagsoversigt ──
 let alleSager = [];
 let aktivSagsnummer = null;
+let aktivSagTab = 'aktiv';
 
 async function hentSagListe(){
   const apiKey=getApiKey();
@@ -987,12 +996,26 @@ async function hentSagListe(){
   }
 }
 
+function switchSagTab(tab, el){
+  aktivSagTab=tab;
+  document.getElementById('tab-aktive').classList.toggle('active', tab==='aktiv');
+  document.getElementById('tab-afsluttede').classList.toggle('active', tab==='afsluttet');
+  document.getElementById('sag-soeg').value='';
+  renderSagListe();
+}
+
 function renderSagListe(term){
   const el=document.getElementById('sag-liste');
   const t=(term||'').toLowerCase().trim();
-  const vis=alleSager.filter(s=>!t||s.sagsnummer.toLowerCase().includes(t)||s.kunde.toLowerCase().includes(t));
-  if(!alleSager.length){
-    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-title">Ingen sager endnu</div><div class="empty-state-sub">Tryk "+ Opret sag" for at komme i gang</div></div>';
+  const iStatus=alleSager.filter(s=>(s.status||'aktiv')===aktivSagTab);
+  const vis=iStatus.filter(s=>!t||s.sagsnummer.toLowerCase().includes(t)||s.kunde.toLowerCase().includes(t));
+
+  if(!iStatus.length){
+    if(aktivSagTab==='aktiv'){
+      el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-title">Ingen aktive sager</div><div class="empty-state-sub">Tryk "+ Opret sag" for at komme i gang</div></div>';
+    } else {
+      el.innerHTML='<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Ingen afsluttede sager</div><div class="empty-state-sub">Afsluttede sager samles her</div></div>';
+    }
     return;
   }
   if(!vis.length){
@@ -1001,22 +1024,61 @@ function renderSagListe(term){
   }
   el.innerHTML=vis.map(s=>{
     const dato=s.sidstOpdateretTs?new Date(s.sidstOpdateretTs).toLocaleDateString('da-DK'):'';
-    return `<div class="sag-card" onclick="aabnSag('${s.sagsnummer.replace(/'/g,"\\'")}')">
-      <div class="sag-card-top">
-        <div>
-          <div class="sag-nr">${s.sagsnummer}</div>
-          ${s.kunde?`<div class="sag-kunde">${s.kunde}</div>`:''}
-          ${s.adresse?`<div class="sag-adresse">${s.adresse}</div>`:''}
+    const erAfsluttet=(s.status==='afsluttet');
+    const afsluttetInfo=erAfsluttet&&s.afsluttetTs?`Afsluttet ${new Date(s.afsluttetTs).toLocaleDateString('da-DK')} af ${s.afsluttetAf||'—'}`:'';
+    return `<div class="sag-card" style="cursor:default;">
+      <div onclick="aabnSag('${s.sagsnummer.replace(/'/g,"\\'")}')" style="cursor:pointer;">
+        <div class="sag-card-top">
+          <div>
+            <div class="sag-nr">${s.sagsnummer}</div>
+            ${s.kunde?`<div class="sag-kunde">${s.kunde}</div>`:''}
+            ${s.adresse?`<div class="sag-adresse">${s.adresse}</div>`:''}
+          </div>
+          <div class="sag-stats">
+            ${s.ordrer?`<span class="badge b-blue">${s.ordrer} ordrer</span>`:''}
+            ${s.returneringer?`<span class="badge b-green">${s.returneringer} retur</span>`:''}
+            ${erAfsluttet?'<span class="badge" style="background:var(--surface-2);color:var(--ink-3);border:1px solid var(--border);">Afsluttet</span>':''}
+          </div>
         </div>
-        <div class="sag-stats">
-          ${s.ordrer?`<span class="badge b-blue">${s.ordrer} ordrer</span>`:''}
-          ${s.returneringer?`<span class="badge b-green">${s.returneringer} retur</span>`:''}
-        </div>
+        <div class="sag-meta">${erAfsluttet?afsluttetInfo:'Senest opdateret '+(dato?dato+' · ':'')+'af '+(s.sidstOpdateretAf||s.oprettetAf||'—')}</div>
       </div>
-      <div class="sag-meta">Senest opdateret ${dato?dato+' · ':''}af ${s.sidstOpdateretAf||s.oprettetAf||'—'}</div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        ${erAfsluttet
+          ?`<button class="ghost" style="font-size:12px;height:28px;padding:0 12px;" onclick="event.stopPropagation();genaabnSag('${s.sagsnummer.replace(/'/g,"\\'")}')">↺ Genåbn sag</button>`
+          :`<button class="ghost" style="font-size:12px;height:28px;padding:0 12px;" onclick="event.stopPropagation();afslutSag('${s.sagsnummer.replace(/'/g,"\\'")}')">✓ Afslut sag</button>`
+        }
+      </div>
     </div>`;
   }).join('');
 }
+
+async function afslutSag(sagsnummer){
+  if(!confirm('Afslut sag '+sagsnummer+'? Den flyttes til "Afsluttede" og kan genåbnes senere.'))return;
+  const apiKey=getApiKey();
+  try{
+    await fetch('/api/sager',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer,status:'afsluttet'})});
+    await hentSagListe();
+  }catch(e){alert('Fejl: '+e.message);}
+}
+
+async function genaabnSag(sagsnummer){
+  const apiKey=getApiKey();
+  try{
+    await fetch('/api/sager',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer,status:'aktiv'})});
+    await hentSagListe();
+  }catch(e){alert('Fejl: '+e.message);}
+}
+
+async function afslutAktivSag(){
+  if(!aktivSagsnummer)return;
+  if(!confirm('Afslut sag '+aktivSagsnummer+'? Den flyttes til "Afsluttede" i ordreoversigten.'))return;
+  const apiKey=getApiKey();
+  try{
+    await fetch('/api/sager',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,status:'afsluttet'})});
+    tilbageTilSager();
+  }catch(e){alert('Fejl: '+e.message);}
+}
+
 
 function filterSagListe(val){ renderSagListe(val); }
 
