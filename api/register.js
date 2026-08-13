@@ -1,4 +1,8 @@
 // api/register.js
+// To måder at registrere sig på:
+// 1) "opret firma" — bliver admin for en ny virksomhed
+// 2) "tilmeld med kode" — bliver montør under en eksisterende virksomhed
+
 import { Redis } from "@upstash/redis";
 import bcrypt from "bcryptjs";
 
@@ -7,37 +11,80 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
+function genFirmaId() {
+  return "f_" + Math.random().toString(36).slice(2, 10);
+}
+
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { email, password } = req.body;
+  const { mode, email, password, navn, firmaNavn, inviteKode } = req.body;
 
-  if (!email || !password)
-    return res.status(400).json({ error: "Email og adgangskode påkrævet" });
-  if (!email.includes("@"))
-    return res.status(400).json({ error: "Ugyldig email" });
-  if (password.length < 8)
-    return res.status(400).json({ error: "Adgangskode skal være mindst 8 tegn" });
+  if (!email || !password || !navn) {
+    return res.status(400).json({ error: "Udfyld navn, email og adgangskode" });
+  }
 
-  const key = `user:${email.toLowerCase()}`;
-  const existing = await redis.get(key);
-  if (existing)
-    return res.status(409).json({ error: "Email er allerede i brug" });
+  const emailKey = "bruger:" + email.toLowerCase().trim();
+  const eksisterende = await redis.get(emailKey);
+  if (eksisterende) {
+    return res.status(400).json({ error: "Der findes allerede en konto med denne email" });
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = {
-    email: email.toLowerCase(),
-    passwordHash,
-    active: true,
-    plan: "trial",
-    createdAt: new Date().toISOString(),
-  };
 
-  await redis.set(key, JSON.stringify(user));
+  // ── Mode 1: Opret ny virksomhed (bliver admin) ──
+  if (mode === "firma") {
+    if (!firmaNavn) return res.status(400).json({ error: "Angiv virksomhedsnavn" });
 
-  const token = Buffer.from(JSON.stringify({
-    email: user.email, active: true, plan: user.plan, ts: Date.now(),
-  })).toString("base64");
+    const firmaId = genFirmaId();
+    const firma = {
+      firmaId,
+      navn: firmaNavn,
+      oprettet: new Date().toISOString(),
+      adminEmail: email.toLowerCase().trim(),
+    };
+    await redis.set("firma:" + firmaId, JSON.stringify(firma));
+    await redis.sadd("firma:" + firmaId + ":brugere", email.toLowerCase().trim());
 
-  return res.status(201).json({ token, email: user.email, plan: user.plan });
+    const bruger = {
+      email: email.toLowerCase().trim(),
+      navn,
+      passwordHash,
+      firmaId,
+      rolle: "admin",
+      oprettet: new Date().toISOString(),
+    };
+    await redis.set(emailKey, JSON.stringify(bruger));
+
+    return res.status(200).json({ success: true, firmaId, rolle: "admin" });
+  }
+
+  // ── Mode 2: Tilmeld med invitationskode (bliver montør) ──
+  if (mode === "invite") {
+    if (!inviteKode) return res.status(400).json({ error: "Angiv invitationskode" });
+
+    const inviteRaw = await redis.get("invite:" + inviteKode.toUpperCase().trim());
+    if (!inviteRaw) {
+      return res.status(400).json({ error: "Ugyldig eller udløbet invitationskode" });
+    }
+    const invite = typeof inviteRaw === "string" ? JSON.parse(inviteRaw) : inviteRaw;
+
+    const bruger = {
+      email: email.toLowerCase().trim(),
+      navn,
+      passwordHash,
+      firmaId: invite.firmaId,
+      rolle: "montoer",
+      oprettet: new Date().toISOString(),
+    };
+    await redis.set(emailKey, JSON.stringify(bruger));
+    await redis.sadd("firma:" + invite.firmaId + ":brugere", email.toLowerCase().trim());
+
+    // Engangskode — slet efter brug
+    await redis.del("invite:" + inviteKode.toUpperCase().trim());
+
+    return res.status(200).json({ success: true, firmaId: invite.firmaId, rolle: "montoer" });
+  }
+
+  return res.status(400).json({ error: "Ugyldig registreringstype" });
 }
