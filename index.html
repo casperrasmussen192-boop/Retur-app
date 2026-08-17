@@ -702,10 +702,13 @@ tbody tr:hover td { background: var(--surface-2); }
 
     <div id="dash-content" style="display:none;">
       <!-- Nøgletal -->
-      <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem;">
+      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem;">
         <div class="stat-box"><div class="stat-lbl">Aktive sager</div><div class="stat-val" id="dash-aktive">0</div></div>
         <div class="stat-box"><div class="stat-lbl">Afsluttede sager</div><div class="stat-val" id="dash-afsluttede">0</div></div>
+      </div>
+      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem;">
         <div class="stat-box"><div class="stat-lbl">Enheder returneret</div><div class="stat-val" id="dash-returneringer">0</div></div>
+        <div class="stat-box"><div class="stat-lbl">Gns. tid pr. retur</div><div class="stat-val" id="dash-gns-tid" style="font-size:20px;">—</div></div>
       </div>
 
       <div class="card">
@@ -1025,15 +1028,17 @@ async function hentDashboard(){
     document.getElementById('dash-aktive').textContent=n.aktiveSager||0;
     document.getElementById('dash-afsluttede').textContent=n.afsluttedeSager||0;
     document.getElementById('dash-returneringer').textContent=n.totalEnheder||0;
+    document.getElementById('dash-gns-tid').textContent=formatVarighed(n.gnsVarighedSekTotal)||'—';
 
     const montEl=document.getElementById('dash-montoerer');
     const montStats=data.montoerStats||[];
     montEl.innerHTML=montStats.length
-      ? montStats.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);">
+      ? montStats.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:6px;">
           <span style="font-size:13px;font-weight:500;">${m.navn}</span>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <span class="badge b-blue">${m.analyser} analyser</span>
             <span class="badge b-green">${m.returneringer} returneringer</span>
+            ${m.gnsVarighedSek?`<span class="badge" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);">⏱ ${formatVarighed(m.gnsVarighedSek)} i snit</span>`:''}
           </div>
         </div>`).join('')
       : '<p style="font-size:13px;color:var(--ink-3);">Ingen aktivitet endnu.</p>';
@@ -1281,6 +1286,7 @@ async function aabnSag(sagsnummer){
 
   indlaesReturTotal(sagsnummer);
   await genopretSession(sagsnummer);
+  window._sagStartTid=Date.now(); // Starter stopur for tidsmåling pr. retur
 }
 
 function tilbageTilSager(){
@@ -1302,12 +1308,20 @@ async function opdaterSagMeta(){
 }
 
 // ── Retur-historik (tidslinje pr. sag) ──
-async function logHistorik(type, titel, linjer, totalAntal){
+async function logHistorik(type, titel, linjer, totalAntal, varighedSek){
   if(!aktivSagsnummer)return;
   const apiKey=getApiKey();
   try{
-    await fetch('/api/historik',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,type,titel,linjer,totalAntal})});
+    await fetch('/api/historik',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,type,titel,linjer,totalAntal,varighedSek})});
   }catch(e){console.error('Historik-log fejlede:',e.message);}
+}
+
+function formatVarighed(sek){
+  if(!sek||sek<1)return '';
+  if(sek<60)return sek+' sek';
+  const min=Math.floor(sek/60);
+  const restSek=sek%60;
+  return restSek>0?`${min} min ${restSek} sek`:`${min} min`;
 }
 
 async function hentHistorik(){
@@ -1328,11 +1342,12 @@ async function hentHistorik(){
       const erRetur=h.type==='retur';
       const dotColor=erRetur?'var(--amber)':'var(--accent)';
       const badge=erRetur?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':'<span class="badge b-blue">Analyse</span>';
+      const varighedTxt=formatVarighed(h.varighedSek);
       const linjerHtml=(h.linjer||[]).map(l=>`<div style="font-size:12px;color:var(--ink-3);">· ${l.navn} — ${Math.round(l.antal)} ${l.enhed}</div>`).join('');
       return `<div class="tl-item">
         <div style="position:relative;flex-shrink:0;"><div class="tl-dot" style="background:${dotColor}"></div><div class="tl-vline"></div></div>
         <div style="flex:1;padding-bottom:16px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">${badge}<span style="font-size:13px;font-weight:500;">${h.titel}</span>${h.totalAntal?`<span style="font-size:12px;color:var(--ink-3);">(${h.totalAntal})</span>`:''}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">${badge}<span style="font-size:13px;font-weight:500;">${h.titel}</span>${h.totalAntal?`<span style="font-size:12px;color:var(--ink-3);">(${h.totalAntal})</span>`:''}${varighedTxt?`<span class="badge" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);">⏱ ${varighedTxt}</span>`:''}</div>
           <div style="font-size:12px;color:var(--ink-3);margin-bottom:6px;">${dato} kl. ${tid} · ${h.udførtAf||'—'}</div>
           ${linjerHtml}
         </div>
@@ -1881,8 +1896,10 @@ function genererRetur(){
   document.getElementById('results').style.display='';
   renderPrOrdre();applyGlobalFilter();gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
-  // Log hændelsen i retur-historikken
-  logHistorik('retur', 'Retur registreret', valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})), Math.round(totalRetur));
+  // Log hændelsen i retur-historikken — inkl. varighed fra sagen blev åbnet til returliste blev genereret
+  const _varighedSek=window._sagStartTid?Math.round((Date.now()-window._sagStartTid)/1000):null;
+  logHistorik('retur', 'Retur registreret', valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})), Math.round(totalRetur), _varighedSek);
+  window._sagStartTid=Date.now(); // Nulstil stopur til næste retur på samme sag
   // Opdater samlet returneret tæller — gemt pr. sagsnummer
   const _cn=document.getElementById('case-num')?.value||'ukendt';
   const _retKey='bd_retur_total:'+_cn;
