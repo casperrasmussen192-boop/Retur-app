@@ -539,6 +539,13 @@ tbody tr:hover td { background: var(--surface-2); }
 .empty-state-title { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 .empty-state-sub { font-size: 13px; }
 
+.tl { display: flex; flex-direction: column; }
+.tl-item { display: flex; gap: 14px; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; }
+.tl-vline { position: absolute; left: 5px; top: 16px; bottom: 0; width: 1px; background: var(--border); }
+.tl-item:last-child .tl-vline { display: none; }
+.tl-item:last-child > div:first-child { position: relative; }
+
 .sag-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 8px; cursor: pointer; transition: all .12s; box-shadow: var(--shadow-sm); }
 .sag-card:hover { border-color: var(--accent-mid); background: var(--surface-2); }
 .sag-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
@@ -844,6 +851,7 @@ tbody tr:hover td { background: var(--surface-2); }
       <button class="tab-btn active" onclick="sw('o',this)">Oversigt</button>
       <button class="tab-btn" onclick="sw('d',this)">Pr. ordre</button>
       <button class="tab-btn" onclick="sw('r',this)">Returliste</button>
+      <button class="tab-btn" onclick="sw('h',this)">Historik</button>
       <button class="tab-btn" onclick="sw('c',this)">Spørg AI</button>
     </div>
 
@@ -865,6 +873,18 @@ tbody tr:hover td { background: var(--surface-2); }
           <div class="empty-state-icon">📋</div>
           <div class="empty-state-title">Ingen returliste endnu</div>
           <div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIK -->
+    <div id="t-h" class="card" style="display:none;">
+      <div class="card-title"><div class="card-icon">🕒</div>Retur-historik</div>
+      <div id="historik-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">🕒</div>
+          <div class="empty-state-title">Ingen historik endnu</div>
+          <div class="empty-state-sub">Analyser og returneringer på denne sag vises her</div>
         </div>
       </div>
     </div>
@@ -1128,6 +1148,11 @@ async function aabnSag(sagsnummer){
   if(rc)rc.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Ingen returliste endnu</div><div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div></div>';
   const so=document.getElementById('senest-opdateret');
   if(so)so.style.display='none';
+  const hc=document.getElementById('historik-content');
+  if(hc)hc.innerHTML='<div class="empty-state"><div class="empty-state-icon">🕒</div><div class="empty-state-title">Ingen historik endnu</div><div class="empty-state-sub">Analyser og returneringer på denne sag vises her</div></div>';
+  // Nulstil til Oversigt-fanen
+  ['o','d','r','h','c'].forEach(t=>{const e=document.getElementById('t-'+t);if(e)e.style.display=t==='o'?'':'none';});
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
 
   indlaesReturTotal(sagsnummer);
   await genopretSession(sagsnummer);
@@ -1149,6 +1174,48 @@ async function opdaterSagMeta(){
   try{
     await fetch('/api/sager',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,ordrer,enheder:Math.round(enheder),returneringer})});
   }catch(e){}
+}
+
+// ── Retur-historik (tidslinje pr. sag) ──
+async function logHistorik(type, titel, linjer, totalAntal){
+  if(!aktivSagsnummer)return;
+  const apiKey=getApiKey();
+  try{
+    await fetch('/api/historik',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,type,titel,linjer,totalAntal})});
+  }catch(e){console.error('Historik-log fejlede:',e.message);}
+}
+
+async function hentHistorik(){
+  if(!aktivSagsnummer)return;
+  const apiKey=getApiKey();
+  const el=document.getElementById('historik-content');
+  try{
+    const resp=await fetch('/api/historik?sag='+encodeURIComponent(aktivSagsnummer),{headers:{'Authorization':'Bearer '+apiKey}});
+    const data=await resp.json();
+    const hændelser=data.hændelser||[];
+    if(!hændelser.length){
+      el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🕒</div><div class="empty-state-title">Ingen historik endnu</div><div class="empty-state-sub">Analyser og returneringer på denne sag vises her</div></div>';
+      return;
+    }
+    el.innerHTML='<div class="tl">'+hændelser.map(h=>{
+      const dato=new Date(h.ts).toLocaleDateString('da-DK');
+      const tid=new Date(h.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
+      const erRetur=h.type==='retur';
+      const dotColor=erRetur?'var(--amber)':'var(--accent)';
+      const badge=erRetur?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':'<span class="badge b-blue">Analyse</span>';
+      const linjerHtml=(h.linjer||[]).map(l=>`<div style="font-size:12px;color:var(--ink-3);">· ${l.navn} — ${Math.round(l.antal)} ${l.enhed}</div>`).join('');
+      return `<div class="tl-item">
+        <div style="position:relative;flex-shrink:0;"><div class="tl-dot" style="background:${dotColor}"></div><div class="tl-vline"></div></div>
+        <div style="flex:1;padding-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">${badge}<span style="font-size:13px;font-weight:500;">${h.titel}</span>${h.totalAntal?`<span style="font-size:12px;color:var(--ink-3);">(${h.totalAntal})</span>`:''}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:6px;">${dato} kl. ${tid} · ${h.udførtAf||'—'}</div>
+          ${linjerHtml}
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    el.innerHTML='<p style="font-size:13px;color:var(--red);">Kunne ikke hente historik: '+e.message+'</p>';
+  }
 }
 
 // ── Session ──
@@ -1273,6 +1340,7 @@ function renderFiles(){
 }
 function clearAll(){
   if(aktivSagsnummer)localStorage.removeItem('bd_retur_total:'+aktivSagsnummer);
+  if(!confirm('Ryd alt for denne sag? Dette sletter også retur-historikken og kan ikke fortrydes.'))return;
   files=[];parsed=null;ctx='';returData=[];
   window._totalReturneret={};window._printData=null;window._returSnapshot=null;
   renderFiles();
@@ -1283,9 +1351,15 @@ function clearAll(){
   document.getElementById('err').style.display='none';
   const rc=document.getElementById('r-content');
   if(rc)rc.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Ingen returliste endnu</div><div class="empty-state-sub">Tryk "Angiv antal retur" og generer returlisten</div></div>';
+  const hc=document.getElementById('historik-content');
+  if(hc)hc.innerHTML='<div class="empty-state"><div class="empty-state-icon">🕒</div><div class="empty-state-title">Ingen historik endnu</div><div class="empty-state-sub">Analyser og returneringer på denne sag vises her</div></div>';
   const so=document.getElementById('senest-opdateret');
   if(so)so.style.display='none';
   rydSession();
+  if(aktivSagsnummer){
+    const apiKey=getApiKey();
+    fetch('/api/historik',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer})}).catch(()=>{});
+  }
 }
 function setP(pct,txt){
   document.getElementById('pw').style.display='block';
@@ -1453,6 +1527,7 @@ async function go(){
   applyGlobalFilter();
   indlaesReturTotal(caseNum);
   gemSession();
+  logHistorik('analyse', files.length+' følgesedler analyseret', [], alleOrdrer.length);
   document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
 
   // Vis advarsel hvis nogle filer stadig fejlede efter retry
@@ -1681,6 +1756,8 @@ function genererRetur(){
   document.getElementById('results').style.display='';
   renderPrOrdre();applyGlobalFilter();gemSession();
   sw('r',document.querySelectorAll('.tab-btn')[2]);
+  // Log hændelsen i retur-historikken
+  logHistorik('retur', 'Retur registreret', valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})), Math.round(totalRetur));
   // Opdater samlet returneret tæller — gemt pr. sagsnummer
   const _cn=document.getElementById('case-num')?.value||'ukendt';
   const _retKey='bd_retur_total:'+_cn;
@@ -1782,12 +1859,13 @@ function applyGlobalFilter(){
 
 // ── Tabs ──
 function sw(tab,el){
-  ['o','d','r','c'].forEach(t=>document.getElementById('t-'+t).style.display='none');
+  ['o','d','r','h','c'].forEach(t=>document.getElementById('t-'+t).style.display='none');
   document.getElementById('t-'+tab).style.display='';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   applyGlobalFilter();
   gemSession();
+  if(tab==='h')hentHistorik();
 }
 
 // ── Chat ──
