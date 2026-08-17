@@ -59,13 +59,28 @@ export default async function handler(req, res) {
     const pr_montoer = {};
     for (const h of alleHændelser) {
       const navn = h.udførtAf || "Ukendt";
-      if (!pr_montoer[navn]) pr_montoer[navn] = { navn, analyser: 0, returneringer: 0 };
+      if (!pr_montoer[navn]) pr_montoer[navn] = { navn, analyser: 0, returneringer: 0, samletVarighedSek: 0, antalMedVarighed: 0 };
       if (h.type === "analyse") pr_montoer[navn].analyser++;
-      if (h.type === "retur") pr_montoer[navn].returneringer++;
+      if (h.type === "retur") {
+        pr_montoer[navn].returneringer++;
+        if (h.varighedSek) {
+          pr_montoer[navn].samletVarighedSek += h.varighedSek;
+          pr_montoer[navn].antalMedVarighed++;
+        }
+      }
     }
-    const montoerStats = Object.values(pr_montoer).sort((a, b) =>
+    const montoerStats = Object.values(pr_montoer).map(m => ({
+      ...m,
+      gnsVarighedSek: m.antalMedVarighed > 0 ? Math.round(m.samletVarighedSek / m.antalMedVarighed) : null,
+    })).sort((a, b) =>
       (b.analyser + b.returneringer) - (a.analyser + a.returneringer)
     );
+
+    // ── Samlet gennemsnitlig tid pr. retur på tværs af hele firmaet ──
+    const returHændelser = alleHændelser.filter(h => h.type === "retur" && h.varighedSek);
+    const gnsVarighedSekTotal = returHændelser.length
+      ? Math.round(returHændelser.reduce((s, h) => s + h.varighedSek, 0) / returHændelser.length)
+      : null;
 
     return res.status(200).json({
       nøgletal: {
@@ -75,6 +90,7 @@ export default async function handler(req, res) {
         totalOrdrer,
         totalEnheder,
         totalReturneringer,
+        gnsVarighedSekTotal,
       },
       senesteAktivitet,
       montoerStats,
