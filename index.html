@@ -652,6 +652,7 @@ tbody tr:hover td { background: var(--surface-2); }
       <span id="top-navn"></span>
       <span class="plan-chip" id="top-rolle"></span>
     </div>
+    <button class="ghost" id="dashboard-btn" onclick="visDashboard()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Dashboard</button>
     <button class="ghost" id="admin-btn" onclick="visAdmin()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Montører</button>
     <button class="ghost" onclick="logout()" style="font-size:12px;height:30px;padding:0 12px;">Log ud</button>
   </div>
@@ -686,6 +687,44 @@ tbody tr:hover td { background: var(--surface-2); }
       <div id="bruger-liste"><p style="font-size:13px;color:var(--ink-3);">Indlæser...</p></div>
     </div>
     <button class="ghost" onclick="skjulAdmin()">← Tilbage til appen</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="view-dashboard" style="display:none;">
+  <div class="page">
+    <div class="page-header">
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-sub">Overblik over virksomhedens returhåndtering</p>
+    </div>
+
+    <div id="dash-loading" class="empty-state"><div class="empty-state-title">Indlæser...</div></div>
+
+    <div id="dash-content" style="display:none;">
+      <!-- Nøgletal -->
+      <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem;">
+        <div class="stat-box"><div class="stat-lbl">Aktive sager</div><div class="stat-val" id="dash-aktive">0</div></div>
+        <div class="stat-box"><div class="stat-lbl">Afsluttede sager</div><div class="stat-val" id="dash-afsluttede">0</div></div>
+        <div class="stat-box"><div class="stat-lbl">Enheder returneret</div><div class="stat-val" id="dash-returneringer">0</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="card-icon">👤</div>Aktivitet pr. montør</div>
+        <div id="dash-montoerer"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔥</div>Mest aktive sager</div>
+        <div id="dash-mest-aktive"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🕒</div>Seneste aktivitet</div>
+        <div id="dash-aktivitet" class="tl"></div>
+      </div>
+    </div>
+
+    <button class="ghost" onclick="skjulDashboard()">← Tilbage til appen</button>
   </div>
 </div>
 
@@ -914,10 +953,12 @@ tbody tr:hover td { background: var(--surface-2); }
     const elFirma=document.getElementById('top-firma');
     const elRolle=document.getElementById('top-rolle');
     const adminBtn=document.getElementById('admin-btn');
+    const dashBtn=document.getElementById('dashboard-btn');
     if(elNavn)elNavn.textContent=navn;
     if(elFirma)elFirma.textContent=firma;
     if(elRolle)elRolle.textContent=rolle==='admin'?'Admin':'Montør';
     if(adminBtn&&rolle==='admin')adminBtn.style.display='';
+    if(dashBtn&&rolle==='admin')dashBtn.style.display='';
   });
 })();
 function logout(){localStorage.removeItem('bd_token');localStorage.removeItem('bd_email');localStorage.removeItem('bd_navn');localStorage.removeItem('bd_firma');localStorage.removeItem('bd_rolle');window.location.href='/login';}
@@ -948,6 +989,90 @@ function skjulAdmin(){
     hentSagListe();
   }
 }
+
+// ── Dashboard ──
+function visDashboard(){
+  document.getElementById('view-sagsoversigt').style.display='none';
+  document.getElementById('main-page').style.display='none';
+  document.getElementById('view-admin').style.display='none';
+  document.getElementById('view-dashboard').style.display='';
+  document.getElementById('dash-loading').style.display='';
+  document.getElementById('dash-content').style.display='none';
+  hentDashboard();
+}
+function skjulDashboard(){
+  document.getElementById('view-dashboard').style.display='none';
+  if(aktivSagsnummer){
+    document.getElementById('main-page').style.display='';
+  } else {
+    document.getElementById('view-sagsoversigt').style.display='';
+    hentSagListe();
+  }
+}
+async function hentDashboard(){
+  const apiKey=getApiKey();
+  try{
+    const resp=await fetch('/api/dashboard',{headers:{'Authorization':'Bearer '+apiKey}});
+    const data=await resp.json();
+    if(!resp.ok){
+      document.getElementById('dash-loading').innerHTML='<p style="color:var(--red);font-size:13px;">'+(data.error||'Fejl')+'</p>';
+      return;
+    }
+    document.getElementById('dash-loading').style.display='none';
+    document.getElementById('dash-content').style.display='';
+
+    const n=data.nøgletal||{};
+    document.getElementById('dash-aktive').textContent=n.aktiveSager||0;
+    document.getElementById('dash-afsluttede').textContent=n.afsluttedeSager||0;
+    document.getElementById('dash-returneringer').textContent=n.totalEnheder||0;
+
+    const montEl=document.getElementById('dash-montoerer');
+    const montStats=data.montoerStats||[];
+    montEl.innerHTML=montStats.length
+      ? montStats.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:13px;font-weight:500;">${m.navn}</span>
+          <div style="display:flex;gap:8px;">
+            <span class="badge b-blue">${m.analyser} analyser</span>
+            <span class="badge b-green">${m.returneringer} returneringer</span>
+          </div>
+        </div>`).join('')
+      : '<p style="font-size:13px;color:var(--ink-3);">Ingen aktivitet endnu.</p>';
+
+    const aktiveEl=document.getElementById('dash-mest-aktive');
+    const mestAktive=(data.mestAktiveSager||[]).filter(s=>s.returneringer>0);
+    aktiveEl.innerHTML=mestAktive.length
+      ? mestAktive.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="skjulDashboard();aabnSag('${s.sagsnummer.replace(/'/g,"\\'")}')">
+          <div>
+            <span class="sag-nr" style="font-size:13px;">${s.sagsnummer}</span>
+            ${s.kunde?`<span style="font-size:12px;color:var(--ink-3);margin-left:8px;">${s.kunde}</span>`:''}
+          </div>
+          <span class="badge b-green">${s.returneringer} retur</span>
+        </div>`).join('')
+      : '<p style="font-size:13px;color:var(--ink-3);">Ingen returneringer endnu.</p>';
+
+    const aktEl=document.getElementById('dash-aktivitet');
+    const aktivitet=data.senesteAktivitet||[];
+    aktEl.innerHTML=aktivitet.length
+      ? aktivitet.map(h=>{
+          const dato=new Date(h.ts).toLocaleDateString('da-DK');
+          const tid=new Date(h.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
+          const erRetur=h.type==='retur';
+          const dotColor=erRetur?'var(--amber)':'var(--accent)';
+          const badge=erRetur?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':'<span class="badge b-blue">Analyse</span>';
+          return `<div class="tl-item">
+            <div style="position:relative;flex-shrink:0;"><div class="tl-dot" style="background:${dotColor}"></div><div class="tl-vline"></div></div>
+            <div style="flex:1;padding-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">${badge}<span style="font-size:13px;font-weight:500;">${h.titel}</span><span class="sag-nr" style="font-size:12px;">${h.sagsnummer}</span></div>
+              <div style="font-size:12px;color:var(--ink-3);">${dato} kl. ${tid} · ${h.udførtAf||'—'}</div>
+            </div>
+          </div>`;
+        }).join('')
+      : '<p style="font-size:13px;color:var(--ink-3);">Ingen aktivitet endnu.</p>';
+  }catch(e){
+    document.getElementById('dash-loading').innerHTML='<p style="color:var(--red);font-size:13px;">Fejl: '+e.message+'</p>';
+  }
+}
+
 async function genererInvite(){
   const apiKey=getApiKey();
   const rolle=document.querySelector('input[name=invite-rolle]:checked')?.value||'montoer';
