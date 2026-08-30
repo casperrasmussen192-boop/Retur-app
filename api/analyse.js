@@ -45,14 +45,19 @@ export default async function handler(req, res) {
 Udtrækker ALLE varelinjer fra SAP-dokumenterne.
 
 VIGTIGT om dokumentnumre:
-- Brug KUN ordrenumre der starter med 1010 eller 300. IGNORER fakturanumre der starter med 111.
+- Ordrenumre er 10-cifrede og starter med 101 (f.eks. 1010xxxxxx eller 1011xxxxxx). Læs dem fra "Ordrenr."-feltet.
+- Kreditnotanumre starter med 300 og står ved "Kreditnota"-overskriften.
+- IGNORER fakturanumre der starter med 111.
+- IGNORER alle tal i bank-/IBAN-oplysninger nederst på siden (f.eks. DK9830000008558183) — de er IKKE ordrenumre.
 - Hvis et dokument kun har et fakturanummer (111...), brug filnavnet som ordrenr i stedet.
 - Hvert ordrenummer må kun optræde ÉN gang i JSON.
 
 VIGTIGT om varelinjer:
 - Medtag KUN varelinjer fra hoveddelen — IGNORER alt under "Leveres fra et andet lager".
 - For kreditnotaer skal antal være negativt (f.eks. -3).
-- Brug KUN den første linje af varebeskrivelsen som navn — ignorer eventuelle beskrivelseslinjer under varenr.
+- Brug KUN den første linje af varebeskrivelsen som "navn" — kort og konsistent.
+- Læg eventuelle ekstra beskrivelseslinjer under varen i feltet "beskrivelse" (f.eks. "Kronos Push til stålrør, TEA belagt overflade"). Udelad SCIP-numre, EAN-numre og CAS-numre.
+- Hvis der ikke er nogen ekstra beskrivelseslinje, sæt "beskrivelse": "".
 - Hver varelinje må kun optræde ÉN gang pr. ordrenummer.
 
 VIGTIGT om pos.nr:
@@ -61,7 +66,7 @@ VIGTIGT om pos.nr:
 - Fakturaer har INGEN pos-kolonne. Kun følgesedler har den.
 
 Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<første linje af beskrivelse>","antal":<tal>,"enhed":"<stk>"}]}]}`,
+{"ordrer":[{"ordrenr":"<1010... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<første linje af beskrivelse>","beskrivelse":"<ekstra beskrivelseslinjer, eller tom streng>","antal":<tal>,"enhed":"<stk>"}]}]}`,
   });
 
   try {
