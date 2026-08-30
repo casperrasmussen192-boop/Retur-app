@@ -539,6 +539,9 @@ tbody tr:hover td { background: var(--surface-2); }
 .empty-state-title { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 .empty-state-sub { font-size: 13px; }
 
+/* Skjult søgetekst — findes af søgningen men vises ikke */
+.hidden-search { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+
 .tl { display: flex; flex-direction: column; }
 .tl-item { display: flex; gap: 14px; }
 .tl-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; }
@@ -1693,7 +1696,7 @@ function getTotals(){
     for(const l of ord.linjer||[]){
       const k=l.varenr||l.navn||'?';
       if(!t[k]){
-        t[k]={navn:l.navn||k,varenr:l.varenr||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||''};
+        t[k]={navn:l.navn||k,varenr:l.varenr||'',beskrivelse:l.beskrivelse||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||''};
         order.push(k);
       }
       t[k].antal+=Number(l.antal)||0;
@@ -1713,7 +1716,7 @@ function renderResults(caseNum){
     <div class="stat-box"><div class="stat-lbl">Unikke varer</div><div class="stat-val">${ks.length}</div></div>
     <div class="stat-box"><div class="stat-lbl">Enheder i alt</div><div class="stat-val">${Math.round(total)}</div></div>`;
   document.getElementById('o-tbl').innerHTML=ks.length
-    ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
+    ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}${t[k].beskrivelse?`<span class="hidden-search">${t[k].beskrivelse}</span>`:''}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
     :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
   renderPrOrdre();
 }
@@ -1731,7 +1734,7 @@ function renderPrOrdre(){
       const k=l.varenr||l.navn||'?';const retur=rMap[k]||0;const rest=Math.round(l.antal)-retur;
       const returCell=harRetur?(retur>0?`<td class="td-green">${retur}</td>`:`<td class="td-dim">—</td>`):'';
       const restCell=harRetur?(retur>0?`<td class="${rest>0?'td-dim':'td-green'}">${rest}</td>`:`<td class="td-dim">${Math.round(l.antal)}</td>`):'';
-      return `<tr><td class="td-pos">${l.pos||'—'}</td><td>${l.navn||'—'}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-bold">${Math.round(l.antal)}</td>${returCell}${restCell}<td class="td-mono">${l.enhed||'stk'}</td></tr>`;
+      return `<tr><td class="td-pos">${l.pos||'—'}</td><td>${l.navn||'—'}${l.beskrivelse?`<span class="hidden-search">${l.beskrivelse}</span>`:''}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-bold">${Math.round(l.antal)}</td>${returCell}${restCell}<td class="td-mono">${l.enhed||'stk'}</td></tr>`;
     }).join('');
     const thRetur=harRetur?'<th style="color:var(--green)">Retur</th><th>Tilbage</th>':'';
     const badge=harRetur&&ordRetur>0?`<span class="ordre-badge" style="margin-left:8px;">${Math.round(ordRetur)} retur</span>`:'';
@@ -1777,10 +1780,10 @@ function visReturEditor(){
 
 function renderReturTable(){
   const countEl=document.getElementById('soeg-count');
-  const synlige=returData.filter(r=>!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(),soegTerm));
+  const synlige=returData.filter(r=>!soegTerm||matchWords((r.navn+' '+r.varenr+' '+(r.beskrivelse||'')).toLowerCase(),soegTerm));
   if(countEl)countEl.textContent=soegTerm?`${synlige.length} af ${returData.length} varer`:'';
   document.getElementById('retur-tbody').innerHTML=returData.map((r,i)=>{
-    const vis=!soegTerm||matchWords((r.navn+' '+r.varenr).toLowerCase(),soegTerm);
+    const vis=!soegTerm||matchWords((r.navn+' '+r.varenr+' '+(r.beskrivelse||'')).toLowerCase(),soegTerm);
     if(!vis)return`<tr style="display:none" id="rrow-${i}"></tr>`;
     const nk=(r.varenr||r.navn||'').toLowerCase().replace(/^0+/,'').trim();
     const tidlRet=(window._totalReturneret&&window._totalReturneret[nk])||0;
@@ -1790,7 +1793,7 @@ function renderReturTable(){
       :`<td class="td-dim">—</td>`;
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
-      <td>${r.navn}</td>
+      <td>${r.navn}${r.beskrivelse?`<span class="hidden-search">${r.beskrivelse}</span>`:''}</td>
       <td class="td-mono">${r.varenr||'—'}</td>
       <td class="td-dim">${Math.round(r.antal)} ${r.enhed}</td>
       ${tidlCell}
