@@ -1514,7 +1514,82 @@ function setP(pct,txt){
 function showErr(msg){const el=document.getElementById('err');el.textContent=msg;el.style.display='block';document.getElementById('pw').style.display='none';}
 function b64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
 
-// ── Analyse ──
+// ── Analyse (Blob + baggrunds-kø, understøtter 3000+ filer) ──
+
+function genererJobId(){
+  if(crypto.randomUUID)return crypto.randomUUID();
+  return 'job-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+}
+
+// Uploader filer til Blob med begrænset samtidighed (undgår at overbelaste serveren)
+async function uploadFilerTilBlob(fileList, jobId, apiKey, onProgress){
+  const CONCURRENCY = 5;
+  const resultater = new Array(fileList.length);
+  const fejledeUploads = [];
+  let næste = 0;
+  let færdige = 0;
+
+  async function worker(){
+    while(næste < fileList.length){
+      const i = næste++;
+      const file = fileList[i];
+      try{
+        const data = await b64(file);
+        const resp = await fetch('/api/blob-upload',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+          body: JSON.stringify({ filnavn: file.name, jobId, pdfBase64: data })
+        });
+        if(!resp.ok){
+          const e = await resp.json().catch(()=>({}));
+          throw new Error(e.error || `HTTP ${resp.status}`);
+        }
+        const result = await resp.json();
+        resultater[i] = { blobUrl: result.blobUrl, filnavn: file.name };
+      }catch(err){
+        fejledeUploads.push(file.name);
+        resultater[i] = null;
+      }
+      færdige++;
+      if(onProgress) onProgress(færdige, fileList.length);
+    }
+  }
+
+  const workers = Array.from({length: Math.min(CONCURRENCY, fileList.length)}, () => worker());
+  await Promise.all(workers);
+
+  return {
+    filer: resultater.filter(Boolean),
+    fejledeUploads
+  };
+}
+
+// Poller jobstatus indtil det er færdigt
+function pollJobStatus(jobId, apiKey, onUpdate){
+  return new Promise((resolve, reject) => {
+    const interval = setInterval(async () => {
+      try{
+        const resp = await fetch('/api/queue-analyse?jobId=' + encodeURIComponent(jobId), {
+          headers: {'Authorization': 'Bearer ' + apiKey}
+        });
+        if(!resp.ok){
+          const e = await resp.json().catch(()=>({}));
+          throw new Error(e.error || `HTTP ${resp.status}`);
+        }
+        const { job } = await resp.json();
+        if(onUpdate) onUpdate(job);
+        if(job.status === 'færdig'){
+          clearInterval(interval);
+          resolve(job);
+        }
+      }catch(err){
+        clearInterval(interval);
+        reject(err);
+      }
+    }, 3000); // Spørg hvert 3. sekund
+  });
+}
+
 async function go(){
   const apiKey=getApiKey();
   if(!apiKey){window.location.href='/login';return;}
@@ -1524,163 +1599,82 @@ async function go(){
   document.getElementById('retur-editor').style.display='none';
   document.getElementById('err').style.display='none';
   const caseNum=document.getElementById('case-num').value.trim()||'ukendt';
+  const model=document.querySelector('input[name=model]:checked')?.value||'haiku';
+  const jobId=genererJobId();
 
-  // Dynamisk batch-størrelse baseret på antal filer
-  // Færre filer pr. batch = mindre hukommelse = mere stabilt for 200+ filer
-  // 1 fil per batch = maksimal præcision, ingen risiko for sammenfletning
-  const BATCH_SIZE = 1;
-  const alleOrdrer=[];
-  const totalBatches=Math.ceil(files.length/BATCH_SIZE);
-  const startTime = Date.now();
-  let fejledeBatches = []; // Samler fejlede batches til retry
-  let fejledeFiler = [];   // Endelige fejl der ikke kunne fixes
-
-  // ── Første gennemgang ──
-  for(let b=0;b<totalBatches;b++){
-    const batchFiles=files.slice(b*BATCH_SIZE,(b+1)*BATCH_SIZE);
-    const pct=Math.round((b/totalBatches)*70);
-    let tidInfo = '';
-    if(b > 0){
-      const elapsed=(Date.now()-startTime)/1000;
-      const perBatch=elapsed/b;
-      const tilbage=Math.round(perBatch*(totalBatches-b));
-      tidInfo=tilbage>60?` — ca. ${Math.ceil(tilbage/60)} min tilbage`:` — ca. ${tilbage} sek tilbage`;
-    }
-    setP(10+pct,`<span class="spin"></span>Batch ${b+1}/${totalBatches} · filer ${b*BATCH_SIZE+1}–${Math.min((b+1)*BATCH_SIZE,files.length)} af ${files.length}${tidInfo}`);
-
-    const pdfs=[];
-    for(const file of batchFiles){
-      try{const data=await b64(file);pdfs.push({name:file.name,data});await new Promise(r=>setTimeout(r,0));}
-      catch(e){console.error('Fil fejl:',file.name);}
-    }
-    if(!pdfs.length)continue;
-
-    let lykkedes=false;
-    let forsøg=0;
-    while(forsøg<2){ // Kun 2 forsøg i første runde
-      try{
-        const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({pdfs,caseNum,model:document.querySelector('input[name=model]:checked')?.value||'haiku'})});
-        if(resp.status===429){
-          const ventetid=(forsøg+1)*20000;
-          setP(10+pct,`<span class="spin"></span>Rate limit — venter ${ventetid/1000} sek...`);
-          await new Promise(r=>setTimeout(r,ventetid));
-          forsøg++;continue;
-        }
-        if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
-        const result=await resp.json();
-        if(result.error)throw new Error(result.error);
-        if(result.data?.ordrer){
-          for(const ord of result.data.ordrer){
-            const existing=alleOrdrer.find(o=>o.ordrenr===ord.ordrenr);
-            if(existing){
-              // Kun undgå nøjagtige dubletter inden for SAMME ordre (samme varenr+pos+antal)
-              for(const l of ord.linjer||[]){
-                const dup=existing.linjer.find(el=>
-                  el.varenr===l.varenr&&
-                  el.pos===l.pos&&
-                  el.antal===l.antal&&
-                  el.navn===l.navn
-                );
-                if(!dup)existing.linjer.push(l);
-              }
-            } else {
-              alleOrdrer.push(ord);
-            }
-          }
-        }
-        lykkedes=true;
-        if(b<totalBatches-1){await new Promise(r=>setTimeout(r,files.length>100?1800:1200));}
-        break;
-      }catch(e){forsøg++;}
-    }
-    if(!lykkedes){
-      fejledeBatches.push({pdfs,batchNr:b+1}); // Gem til retry
-    }
-  }
-
-  // ── Retry af fejlede batches ──
-  if(fejledeBatches.length>0){
-    setP(82,`<span class="spin"></span>Prøver ${fejledeBatches.length} fejlede batch${fejledeBatches.length>1?'es':''} igen...`);
-    await new Promise(r=>setTimeout(r,3000)); // Vent lidt før retry
-
-    for(const batch of fejledeBatches){
-      let lykkedes=false;
-      let forsøg=0;
-      while(forsøg<3){
-        try{
-          const resp=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({pdfs:batch.pdfs,caseNum})});
-          if(resp.status===429){await new Promise(r=>setTimeout(r,(forsøg+1)*25000));forsøg++;continue;}
-          if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${resp.status}`);}
-          const result=await resp.json();
-          if(result.error)throw new Error(result.error);
-          if(result.data?.ordrer){
-            for(const ord of result.data.ordrer){
-              const existing=alleOrdrer.find(o=>o.ordrenr===ord.ordrenr);
-              if(existing){
-                for(const l of ord.linjer||[]){
-                  const dup=existing.linjer.find(el=>
-                    el.varenr===l.varenr&&
-                    el.pos===l.pos&&
-                    el.antal===l.antal&&
-                    el.navn===l.navn
-                  );
-                  if(!dup)existing.linjer.push(l);
-                }
-              } else {
-                alleOrdrer.push(ord);
-              }
-            }
-          }
-          lykkedes=true;
-          await new Promise(r=>setTimeout(r,1500));
-          break;
-        }catch(e){forsøg++;}
-      }
-      if(!lykkedes){
-        // Stadig fejl efter retry — registrer de specifikke filer
-        fejledeFiler.push(...batch.pdfs.map(p=>p.name));
-      }
-    }
-  }
-
-  setP(95,`<span class="spin"></span>Samler resultater...`);
-
-  // Endelig deduplikering — fjern identiske varelinjer inden for samme ordre
-  for(const ord of alleOrdrer){
-    const set=new Map();
-    ord.linjer=(ord.linjer||[]).filter(l=>{
-      // Nøgle: varenr + pos + antal + navn — alle fire skal matche for at være dublet
-      const k=`${l.varenr||''}|${l.pos||''}|${l.antal}|${l.navn||''}`;
-      if(set.has(k))return false;
-      set.set(k,true);
-      return true;
+  try{
+    // ── Trin 1: Upload alle filer til Blob ──
+    setP(5, `<span class="spin"></span>Uploader ${files.length} filer...`);
+    const { filer, fejledeUploads } = await uploadFilerTilBlob(files, jobId, apiKey, (færdige, total) => {
+      const pct = 5 + Math.round((færdige/total) * 35); // 5–40%
+      setP(pct, `<span class="spin"></span>Uploader filer... ${færdige}/${total}`);
     });
-  }
 
-  if(!alleOrdrer.length && fejledeFiler.length===files.length){
-    showErr('Ingen ordrer kunne læses. Tjek filerne og prøv igen.');
-    btn.disabled=false;
-    return;
-  }
-  parsed={ordrer:alleOrdrer};ctx=JSON.stringify(parsed);
-  setP(100,'Analyse fuldført ✓ ('+alleOrdrer.length+' ordrer)');
-  setTimeout(()=>document.getElementById('pw').style.display='none',1000);
-  renderResults(caseNum);
-  document.getElementById('results').style.display='';
-  applyGlobalFilter();
-  indlaesReturTotal(caseNum);
-  gemSession();
-  logHistorik('analyse', files.length+' følgesedler analyseret', [], alleOrdrer.length);
-  document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
+    if(!filer.length){
+      showErr('Ingen filer kunne uploades. Prøv igen.');
+      btn.disabled=false;
+      return;
+    }
 
-  // Vis advarsel hvis nogle filer stadig fejlede efter retry
-  if(fejledeFiler.length>0){
-    const errEl=document.getElementById('err');
-    errEl.style.display='block';
-    errEl.style.background='#fffbeb';
-    errEl.style.borderColor='#fde68a';
-    errEl.style.color='#92400e';
-    errEl.innerHTML=`⚠ ${fejledeFiler.length} fil${fejledeFiler.length>1?'er':''}  kunne ikke læses efter gentagne forsøg og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeFiler.join('<br>')}</span><br><br>Tjek disse filer manuelt eller prøv at uploade dem separat.`;
+    // ── Trin 2: Start analyse-job (lægger filer i QStash-køen) ──
+    setP(42, `<span class="spin"></span>Starter analyse af ${filer.length} filer...`);
+    const startResp = await fetch('/api/queue-analyse', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body: JSON.stringify({ jobId, sagsnummer: caseNum, filer, model })
+    });
+    if(!startResp.ok){
+      const e = await startResp.json().catch(()=>({}));
+      throw new Error(e.error || `HTTP ${startResp.status}`);
+    }
+
+    // ── Trin 3: Poll status indtil analysen er færdig ──
+    const startTime = Date.now();
+    const job = await pollJobStatus(jobId, apiKey, (j) => {
+      const behandlet = (j.færdige||0) + (j.fejlede?.length||0);
+      const pct = 45 + Math.round((behandlet / j.antalFiler) * 50); // 45–95%
+      const elapsed = (Date.now()-startTime)/1000;
+      let tidInfo='';
+      if(behandlet>0){
+        const perFil = elapsed/behandlet;
+        const tilbage = Math.round(perFil*(j.antalFiler-behandlet));
+        tidInfo = tilbage>60 ? ` — ca. ${Math.ceil(tilbage/60)} min tilbage` : ` — ca. ${tilbage} sek tilbage`;
+      }
+      setP(pct, `<span class="spin"></span>Analyserer... ${behandlet}/${j.antalFiler} filer${tidInfo}`);
+    });
+
+    setP(97, `<span class="spin"></span>Samler resultater...`);
+
+    const alleOrdrer = job.ordrer || [];
+    const fejledeFiler = [...fejledeUploads, ...(job.fejlede||[])];
+
+    if(!alleOrdrer.length && fejledeFiler.length===files.length){
+      showErr('Ingen ordrer kunne læses. Tjek filerne og prøv igen.');
+      btn.disabled=false;
+      return;
+    }
+
+    parsed={ordrer:alleOrdrer};ctx=JSON.stringify(parsed);
+    setP(100,'Analyse fuldført ✓ ('+alleOrdrer.length+' ordrer)');
+    setTimeout(()=>document.getElementById('pw').style.display='none',1000);
+    renderResults(caseNum);
+    document.getElementById('results').style.display='';
+    applyGlobalFilter();
+    indlaesReturTotal(caseNum);
+    gemSession();
+    logHistorik('analyse', files.length+' følgesedler analyseret', [], alleOrdrer.length);
+    document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
+
+    if(fejledeFiler.length>0){
+      const errEl=document.getElementById('err');
+      errEl.style.display='block';
+      errEl.style.background='#fffbeb';
+      errEl.style.borderColor='#fde68a';
+      errEl.style.color='#92400e';
+      errEl.innerHTML=`⚠ ${fejledeFiler.length} fil${fejledeFiler.length>1?'er':''} kunne ikke læses og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeFiler.join('<br>')}</span><br><br>Tjek disse filer manuelt eller prøv at uploade dem separat.`;
+    }
+  }catch(err){
+    showErr('Fejl under analyse: ' + err.message);
   }
   btn.disabled=false;
 }
