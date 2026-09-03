@@ -1,8 +1,14 @@
 // api/blob-upload.js
-// Genererer en signeret upload-URL så browseren kan lægge en PDF direkte i Blob-lageret
-// uden at filen skal igennem vores server (undgår 4.5 MB-grænsen på Vercel Functions)
+// Modtager en PDF og lægger den i det private Blob-lager.
+// Bruger OIDC-autentificering automatisk (ingen statisk token nødvendig).
 
-import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
+
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: "4mb" },
+  },
+};
 
 function getUser(req) {
   try {
@@ -20,25 +26,23 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { filnavn, jobId } = req.body;
-    if (!filnavn || !jobId) {
-      return res.status(400).json({ error: "Angiv filnavn og jobId" });
+    const { filnavn, jobId, pdfBase64 } = req.body;
+    if (!filnavn || !jobId || !pdfBase64) {
+      return res.status(400).json({ error: "Angiv filnavn, jobId og pdfBase64" });
     }
 
-    // Filerne gemmes under firma + job, så de er isolerede og nemme at rydde op
-    const pathname = `analyser/${user.firmaId}/${jobId}/${Date.now()}-${filnavn}`;
+    const buffer = Buffer.from(pdfBase64, "base64");
 
-    const clientToken = await generateClientTokenFromReadWriteToken({
-      pathname,
-      onUploadCompleted: undefined,
-      validUntil: Date.now() + 60 * 60 * 1000, // 1 time
-      addRandomSuffix: true,
-      allowedContentTypes: ["application/pdf"],
-      maximumSizeInBytes: 20 * 1024 * 1024, // 20 MB pr. fil
+    // Filerne gemmes under firma + job, så de er isolerede og nemme at rydde op
+    const pathname = `analyser/${user.firmaId}/${jobId}/${filnavn}`;
+
+    const blob = await put(pathname, buffer, {
       access: "private",
+      contentType: "application/pdf",
+      addRandomSuffix: true,
     });
 
-    return res.status(200).json({ clientToken, pathname });
+    return res.status(200).json({ success: true, blobUrl: blob.url, filnavn });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
