@@ -3,7 +3,7 @@
 // og gemmer resultatet i jobbet. Browseren behøver ikke være åben.
 
 import { Redis } from "@upstash/redis";
-import { verifySignature } from "@upstash/qstash/nextjs";
+import { Receiver } from "@upstash/qstash";
 import { head } from "@vercel/blob";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -14,22 +14,45 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
+const receiver = new Receiver({
+  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
+  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY,
+});
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-async function læsBody(req) {
+async function læsRåBody(req) {
   const chunks = [];
   for await (const chunk of req) chunks.push(chunk);
-  return JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+  return Buffer.concat(chunks).toString("utf-8");
 }
 
-async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // Læs rå body — nødvendig for at kunne verificere QStash-signaturen
+  let råBody;
+  try {
+    råBody = await læsRåBody(req);
+  } catch {
+    return res.status(400).json({ error: "Kunne ikke læse body" });
+  }
+
+  // Verificer at kaldet faktisk kommer fra QStash
+  try {
+    const signatur = req.headers["upstash-signature"];
+    if (!signatur) return res.status(401).json({ error: "Mangler signatur" });
+    const gyldig = await receiver.verify({ signature: signatur, body: råBody });
+    if (!gyldig) return res.status(401).json({ error: "Ugyldig signatur" });
+  } catch (err) {
+    return res.status(401).json({ error: "Signaturverifikation fejlede" });
+  }
 
   let payload;
   try {
-    payload = await læsBody(req);
+    payload = JSON.parse(råBody);
   } catch {
-    return res.status(400).json({ error: "Ugyldig body" });
+    return res.status(400).json({ error: "Ugyldig JSON" });
   }
 
   const { jobId, firmaId, sagsnummer, model, blobUrl, filnavn } = payload;
@@ -94,7 +117,6 @@ Returner KUN JSON uden markdown:
     const raw = await redis.get(jobKey);
     if (raw) {
       const job = typeof raw === "string" ? JSON.parse(raw) : raw;
-      // Flet nye ordrer ind i de eksisterende
       for (const ord of data.ordrer || []) {
         const eksisterende = job.ordrer.find(o => o.ordrenr === ord.ordrenr);
         if (eksisterende) {
@@ -129,6 +151,3 @@ Returner KUN JSON uden markdown:
     return res.status(200).json({ success: false, error: err.message });
   }
 }
-
-// QStash signerer alle kald — verifySignature sikrer at kun QStash kan ramme dette endpoint
-export default verifySignature(handler);
