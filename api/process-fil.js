@@ -9,6 +9,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const config = { api: { bodyParser: false } };
 
+const TTL = 7 * 24 * 60 * 60;
+
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
@@ -30,7 +32,6 @@ async function læsRåBody(req) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Læs rå body — nødvendig for at kunne verificere QStash-signaturen
   let råBody;
   try {
     råBody = await læsRåBody(req);
@@ -38,7 +39,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Kunne ikke læse body" });
   }
 
-  // Verificer at kaldet faktisk kommer fra QStash
   try {
     const signatur = req.headers["upstash-signature"];
     if (!signatur) return res.status(401).json({ error: "Mangler signatur" });
@@ -60,10 +60,29 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Mangler jobId, firmaId eller blobUrl" });
   }
 
+  // ── Nye, atomare nøgler i stedet for ét fælles JSON-objekt ──
   const jobKey = `job:${firmaId}:${jobId}`;
+  const countKey = `job:${firmaId}:${jobId}:færdige`;
+  const fejlKey = `job:${firmaId}:${jobId}:fejlede`;
+  const resultaterKey = `job:${firmaId}:${jobId}:resultater`;
+
+  // Fælles: tjek om jobbet nu er helt færdigt, og opdater status hvis så
+  async function markerFærdigHvisKlar() {
+    const rawMeta = await redis.get(jobKey);
+    if (!rawMeta) return;
+    const meta = typeof rawMeta === "string" ? JSON.parse(rawMeta) : rawMeta;
+    const [færdige, fejlede] = await Promise.all([
+      redis.get(countKey),
+      redis.scard(fejlKey),
+    ]);
+    const antalFærdige = Number(færdige) || 0;
+    if (antalFærdige + (fejlede || 0) >= meta.antalFiler && meta.status !== "færdig") {
+      meta.status = "færdig";
+      await redis.set(jobKey, JSON.stringify(meta), { ex: TTL });
+    }
+  }
 
   try {
-    // Hent PDF'en fra det private Blob-lager
     const blobInfo = await head(blobUrl);
     const pdfResp = await fetch(blobInfo.downloadUrl || blobUrl);
     const pdfBuffer = Buffer.from(await pdfResp.arrayBuffer());
@@ -113,40 +132,23 @@ Returner KUN JSON uden markdown:
     if (start === -1 || slut === -1) throw new Error("Intet JSON i svaret");
     const data = JSON.parse(tekst.slice(start, slut + 1));
 
-    // Opdater jobbet med resultatet
-    const raw = await redis.get(jobKey);
-    if (raw) {
-      const job = typeof raw === "string" ? JSON.parse(raw) : raw;
-      for (const ord of data.ordrer || []) {
-        const eksisterende = job.ordrer.find(o => o.ordrenr === ord.ordrenr);
-        if (eksisterende) {
-          for (const l of ord.linjer || []) {
-            const dup = eksisterende.linjer.find(el =>
-              el.varenr === l.varenr && el.pos === l.pos && el.antal === l.antal && el.navn === l.navn
-            );
-            if (!dup) eksisterende.linjer.push(l);
-          }
-        } else {
-          job.ordrer.push(ord);
-        }
-      }
-      job.færdige = (job.færdige || 0) + 1;
-      if (job.færdige + (job.fejlede?.length || 0) >= job.antalFiler) job.status = "færdig";
-      await redis.set(jobKey, JSON.stringify(job), { ex: 7 * 24 * 60 * 60 });
-    }
+    // ── Atomare opdateringer: ingen læs-ret-skriv på et fælles objekt ──
+    // Gem denne fils resultat som sit eget listeelement (RPUSH er atomisk)
+    await redis.rpush(resultaterKey, JSON.stringify(data.ordrer || []));
+    await redis.expire(resultaterKey, TTL);
+
+    // Øg tælleren atomisk (INCR kan ikke miste opdateringer, uanset hvor mange der kører samtidig)
+    await redis.incr(countKey);
+    await redis.expire(countKey, TTL);
+
+    await markerFærdigHvisKlar();
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    // Registrer fejlen på jobbet, men returner 200 så QStash ikke bliver ved med at prøve
     try {
-      const raw = await redis.get(jobKey);
-      if (raw) {
-        const job = typeof raw === "string" ? JSON.parse(raw) : raw;
-        job.fejlede = job.fejlede || [];
-        if (!job.fejlede.includes(filnavn)) job.fejlede.push(filnavn);
-        if (job.færdige + job.fejlede.length >= job.antalFiler) job.status = "færdig";
-        await redis.set(jobKey, JSON.stringify(job), { ex: 7 * 24 * 60 * 60 });
-      }
+      await redis.sadd(fejlKey, filnavn || "ukendt fil");
+      await redis.expire(fejlKey, TTL);
+      await markerFærdigHvisKlar();
     } catch {}
     return res.status(200).json({ success: false, error: err.message });
   }
