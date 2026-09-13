@@ -947,6 +947,16 @@ tbody tr:hover td { background: var(--surface-2); }
 
 
 <script>
+// ── Global 401-håndtering: udløbet eller ugyldigt login sender automatisk til login-siden ──
+(function(){
+  const _fetch = window.fetch.bind(window);
+  window.fetch = async function(...args){
+    const resp = await _fetch(...args);
+    const url = typeof args[0]==='string' ? args[0] : (args[0]&&args[0].url) || '';
+    if(resp.status===401 && url.includes('/api/')) logout();
+    return resp;
+  };
+})();
 // ── Auth ──
 (function(){
   const token=localStorage.getItem('bd_token');
