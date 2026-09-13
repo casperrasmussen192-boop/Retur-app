@@ -5,6 +5,8 @@
 import { Redis } from "@upstash/redis";
 import { Client } from "@upstash/qstash";
 
+const TTL = 7 * 24 * 60 * 60;
+
 const redis = new Redis({
     url: process.env.KV_REST_API_URL,
     token: process.env.KV_REST_API_TOKEN,
@@ -27,6 +29,9 @@ export default async function handler(req, res) {
     if (!user) return res.status(401).json({ error: "Ikke logget ind" });
 
   const jobKey = (jobId) => `job:${user.firmaId}:${jobId}`;
+  const countKey = (jobId) => `job:${user.firmaId}:${jobId}:færdige`;
+  const fejlKey = (jobId) => `job:${user.firmaId}:${jobId}:fejlede`;
+  const resultaterKey = (jobId) => `job:${user.firmaId}:${jobId}:resultater`;
 
   // ── POST: start et nyt job ──
   if (req.method === "POST") {
@@ -36,6 +41,8 @@ export default async function handler(req, res) {
                           return res.status(400).json({ error: "Angiv jobId, sagsnummer og filer" });
                 }
 
+          // Jobbet gemmer nu kun metadata — resultater/tæller/fejl ligger i egne nøgler,
+          // så mange samtidige QStash-kald aldrig skriver til det samme objekt
           const job = {
                     jobId,
                     sagsnummer,
@@ -45,18 +52,13 @@ export default async function handler(req, res) {
                     status: "kører",
                     model: model === "sonnet" ? "sonnet" : "haiku",
                     antalFiler: filer.length,
-                    færdige: 0,
-                    fejlede: [],
-                    ordrer: [],
           };
-                await redis.set(jobKey(jobId), JSON.stringify(job), { ex: 7 * 24 * 60 * 60 });
+                await redis.set(jobKey(jobId), JSON.stringify(job), { ex: TTL });
 
-          // Byg absolut URL til det endpoint QStash skal kalde
           const proto = req.headers["x-forwarded-proto"] || "https";
                 const host = req.headers["x-forwarded-host"] || req.headers.host;
                 const målUrl = `${proto}://${host}/api/process-fil`;
 
-          // Læg hver fil i køen som en separat besked
           const beskeder = filer.map((f) => ({
                     url: målUrl,
                     body: {
@@ -70,7 +72,6 @@ export default async function handler(req, res) {
                     retries: 2,
           }));
 
-          // QStash kan tage op til 100 beskeder pr. batch-kald
           for (let i = 0; i < beskeder.length; i += 100) {
                     await qstash.batchJSON(beskeder.slice(i, i + 100));
           }
@@ -81,15 +82,49 @@ export default async function handler(req, res) {
         }
   }
 
-  // ── GET: spørg om status på et job ──
+  // ── GET: spørg om status på et job — samler resultaterne fra de atomare nøgler ──
   if (req.method === "GET") {
         try {
                 const { jobId } = req.query;
                 if (!jobId) return res.status(400).json({ error: "Angiv jobId" });
-                const raw = await redis.get(jobKey(jobId));
+
+          const raw = await redis.get(jobKey(jobId));
                 if (!raw) return res.status(404).json({ error: "Job ikke fundet" });
-                const job = typeof raw === "string" ? JSON.parse(raw) : raw;
-                return res.status(200).json({ job });
+                const meta = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+          const [færdige, fejlListe, resultatListe] = await Promise.all([
+                    redis.get(countKey(jobId)),
+                    redis.smembers(fejlKey(jobId)),
+                    redis.lrange(resultaterKey(jobId), 0, -1),
+          ]);
+
+          // Slå alle filers resultater sammen og dedupliker, ligesom før
+          const ordrer = [];
+                for (const rå of resultatListe || []) {
+                          const filOrdrer = typeof rå === "string" ? JSON.parse(rå) : rå;
+                          for (const ord of filOrdrer || []) {
+                                        const eksisterende = ordrer.find(o => o.ordrenr === ord.ordrenr);
+                                        if (eksisterende) {
+                                                        for (const l of ord.linjer || []) {
+                                                                          const dup = eksisterende.linjer.find(el =>
+                                                                                              el.varenr === l.varenr && el.pos === l.pos && el.antal === l.antal && el.navn === l.navn
+                                                                          );
+                                                                          if (!dup) eksisterende.linjer.push(l);
+                                                        }
+                                        } else {
+                                                        ordrer.push(ord);
+                                        }
+                          }
+                }
+
+          const job = {
+                    ...meta,
+                    færdige: Number(færdige) || 0,
+                    fejlede: fejlListe || [],
+                    ordrer,
+          };
+
+          return res.status(200).json({ job });
         } catch (err) {
                 return res.status(500).json({ error: err.message });
         }
@@ -100,7 +135,12 @@ export default async function handler(req, res) {
         try {
                 const { jobId } = req.body;
                 if (!jobId) return res.status(400).json({ error: "Angiv jobId" });
-                await redis.del(jobKey(jobId));
+                await Promise.all([
+                          redis.del(jobKey(jobId)),
+                          redis.del(countKey(jobId)),
+                          redis.del(fejlKey(jobId)),
+                          redis.del(resultaterKey(jobId)),
+                ]);
                 return res.status(200).json({ success: true });
         } catch (err) {
                 return res.status(500).json({ error: err.message });
@@ -109,5 +149,3 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: "Method not allowed" });
 }
-
-// redeploy: pick up refreshed QSTASH_TOKEN
