@@ -1313,8 +1313,9 @@ async function opdaterSagMeta(){
   if(!aktivSagsnummer)return;
   const apiKey=getApiKey();
   const ordrer=(parsed?.ordrer||[]).length;
-  const enheder=Object.values(getTotals()).reduce((s,v)=>s+v.antal,0);
-  const returneringer=returData.filter(r=>r.checked&&r.returAntal>0).length;
+  const returnerede=returData.filter(r=>r.checked&&r.returAntal>0);
+  const enheder=returnerede.reduce((s,r)=>s+r.returAntal,0);
+  const returneringer=returnerede.length;
   try{
     await fetch('/api/sager',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({sagsnummer:aktivSagsnummer,ordrer,enheder:Math.round(enheder),returneringer})});
   }catch(e){}
