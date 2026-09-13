@@ -3,28 +3,19 @@
 // Gemt som en Redis-liste: firma:{firmaId}:historik:{sagsnummer}
 
 import { Redis } from "@upstash/redis";
+import { verifyToken } from "./_auth.js";
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
 });
 
-function getUser(req) {
-  try {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith("Bearer ")) return null;
-    const token = auth.split(" ")[1];
-    const user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-    return user?.email && user?.firmaId ? user : null;
-  } catch { return null; }
-}
-
 function normSag(s) {
   return (s || "UKENDT").toString().trim().toUpperCase();
 }
 
 export default async function handler(req, res) {
-  const user = getUser(req);
+  const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
 
   const sagsnummer = normSag(req.method === "GET" ? req.query.sag : req.body?.sagsnummer);

@@ -3,6 +3,7 @@
 // Bruger OIDC-autentificering automatisk (ingen statisk token nødvendig).
 
 import { put } from "@vercel/blob";
+import { verifyToken } from "./_auth.js";
 
 export const config = {
   api: {
@@ -10,18 +11,8 @@ export const config = {
   },
 };
 
-function getUser(req) {
-  try {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith("Bearer ")) return null;
-    const token = auth.split(" ")[1];
-    const user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-    return user?.email && user?.firmaId ? user : null;
-  } catch { return null; }
-}
-
 export default async function handler(req, res) {
-  const user = getUser(req);
+  const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 

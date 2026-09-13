@@ -1,22 +1,15 @@
 // api/chat.js
 import Anthropic from "@anthropic-ai/sdk";
+import { verifyToken } from "./_auth.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  const user = verifyToken(req);
+  if (!user) {
     return res.status(401).json({ error: "Ikke logget ind" });
-  }
-  const token = authHeader.split(" ")[1];
-  let user = null;
-  try {
-    user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-  } catch {}
-  if (!user || !user.email) {
-    return res.status(401).json({ error: "Ugyldigt login" });
   }
 
   const { message, context } = req.body;

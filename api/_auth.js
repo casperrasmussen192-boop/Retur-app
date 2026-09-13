@@ -12,7 +12,7 @@ export function verifyToken(req) {
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded; // { userId, email, active, plan }
+    return decoded; // { email, navn, firmaId, rolle, firmaNavn }
   } catch {
     return null;
   }

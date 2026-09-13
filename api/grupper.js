@@ -1,22 +1,13 @@
 // api/grupper.js
 // Modtager PDF'er, grupperer dem automatisk efter sagsnummer
 import Anthropic from "@anthropic-ai/sdk";
+import { verifyToken } from "./_auth.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-function getUser(req) {
-  try {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith("Bearer ")) return null;
-    const token = auth.split(" ")[1];
-    const user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-    return user?.email ? user : null;
-  } catch { return null; }
-}
-
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-  const user = getUser(req);
+  const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
 
   const { pdfs } = req.body;

@@ -1,5 +1,6 @@
 // api/analyse.js
 import Anthropic from "@anthropic-ai/sdk";
+import { verifyToken } from "./_auth.js";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -10,16 +11,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Ikke logget ind" });
-  }
-  const token = authHeader.split(" ")[1];
-  let user = null;
-  try {
-    user = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
-  } catch {}
-  if (!user || !user.email) {
+  const user = verifyToken(req);
+  if (!user) {
     return res.status(401).json({ error: "Ugyldigt login — log ind igen" });
   }
 
