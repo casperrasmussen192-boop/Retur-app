@@ -4,7 +4,7 @@
 
 import { Redis } from "@upstash/redis";
 import { Receiver } from "@upstash/qstash";
-import { head } from "@vercel/blob";
+import { get } from "@vercel/blob";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const config = { api: { bodyParser: false } };
@@ -83,9 +83,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const blobInfo = await head(blobUrl);
-    const pdfResp = await fetch(blobInfo.downloadUrl || blobUrl);
-    const pdfBuffer = Buffer.from(await pdfResp.arrayBuffer());
+    const blobResult = await get(blobUrl, { access: "private" });
+    if (!blobResult || blobResult.statusCode !== 200 || !blobResult.stream) {
+      throw new Error("Kunne ikke hente PDF fra Blob-lager");
+    }
+    const chunks = [];
+    for await (const chunk of blobResult.stream) chunks.push(chunk);
+    const pdfBuffer = Buffer.concat(chunks);
     const base64 = pdfBuffer.toString("base64");
 
     const modelNavn = model === "sonnet" ? "claude-sonnet-4-5" : "claude-haiku-4-5-20251001";
