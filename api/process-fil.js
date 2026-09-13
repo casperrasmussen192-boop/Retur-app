@@ -146,7 +146,7 @@ Returner KUN JSON uden markdown:
     return res.status(200).json({ success: true });
   } catch (err) {
     try {
-      await redis.sadd(fejlKey, filnavn || "ukendt fil");
+      await redis.sadd(fejlKey, `${filnavn || "ukendt fil"} — ${err.message}`);
       await redis.expire(fejlKey, TTL);
       await markerFærdigHvisKlar();
     } catch {}
