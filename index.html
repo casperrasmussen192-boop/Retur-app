@@ -647,7 +647,7 @@ tbody tr:hover td { background: var(--surface-2); }
 <!-- TOP NAV -->
 <nav class="topnav">
   <div class="nav-brand">
-    <div class="nav-logo">BD</div>
+    <div class="nav-logo">RF</div>
     <span class="nav-title" id="top-firma">ReturnFlow</span>
   </div>
   <div class="nav-right">
@@ -1455,7 +1455,7 @@ function indlaesSession(session){
       if(tabs[tabIdx])sw(session.activeTab,tabs[tabIdx]);
     }
     const chatEl=document.getElementById('chat');
-    if(chatEl)chatEl.innerHTML='<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Session genoprettet ✓ — du kan fortsætte præcis hvor du slap.</div></div>';
+    if(chatEl)chatEl.innerHTML='<div class="msg msg-ai"><div class="avatar">RF</div><div class="bubble">Session genoprettet ✓ — du kan fortsætte præcis hvor du slap.</div></div>';
     if(returData.length)updateBadge();
     applyGlobalFilter();
   }
@@ -1676,7 +1676,7 @@ async function go(){
     indlaesReturTotal(caseNum);
     gemSession();
     logHistorik('analyse', files.length+' følgesedler analyseret', [], alleOrdrer.length, null, fejledeFiler.length);
-    document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
+    document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">RF</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
 
     if(fejledeFiler.length>0){
       const errEl=document.getElementById('err');
@@ -1976,7 +1976,7 @@ function printRetur(){
   });
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"/><title>Returliste ${cn}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;font-size:12px;color:#1a1815;background:#fff;padding:2.5rem;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #1a1815;}.logo{font-size:18px;font-weight:500;background:#1a1815;color:#fff;padding:6px 14px;border-radius:6px;}.header-right h1{font-size:20px;font-weight:500;margin-bottom:4px;}.header-right p{font-size:11px;color:#6b6560;}.meta{display:flex;gap:2rem;margin-bottom:1.5rem;padding:12px 16px;background:#f5f3ef;border-radius:8px;flex-wrap:wrap;}.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9e9890;margin-bottom:2px;}.meta-value{font-size:13px;font-weight:500;}.summary-box{display:flex;gap:1rem;margin-bottom:1.5rem;}.stat{flex:1;border:1px solid #e2ddd8;border-radius:8px;padding:10px 14px;}.stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9e9890;margin-bottom:2px;}.stat-v{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;}.stat-v.green{color:#1a7a3c;}.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b6560;margin-bottom:8px;margin-top:1.5rem;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem;}th{text-align:left;padding:6px 8px;background:#f5f3ef;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;border-bottom:1px solid #e2ddd8;}td{padding:6px 8px;border-bottom:1px solid #e2ddd8;}tr.even td{background:#fff;}tr.odd td{background:#faf9f7;}.mono{font-family:'DM Mono',monospace;font-size:11px;color:#6b6560;}.antal{font-weight:500;text-align:right;}.antal.green{color:#1a7a3c;}.divider{border:none;border-top:2px solid #e2ddd8;margin:1.5rem 0;}.ordre-header{font-size:11px;font-weight:500;background:#eef2fd;color:#1a4fd6;padding:6px 10px;border-radius:6px;margin-bottom:6px;margin-top:1rem;font-family:'DM Mono',monospace;}.footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2ddd8;font-size:10px;color:#9e9890;display:flex;justify-content:space-between;}.total-row td{font-weight:500;border-top:2px solid #1a1815;background:#f5f3ef!important;}@media print{body{padding:1.5rem;}@page{margin:1.5cm;size:A4;}}</style></head><body>
-  <div class="header"><div class="logo">BD</div><div class="header-right"><h1>Returliste</h1><p>Brødrene Dahl A/S &nbsp;·&nbsp; ${dato}</p></div></div>
+  <div class="header"><div class="logo">RF</div><div class="header-right"><h1>Returliste</h1><p>ReturnFlow &nbsp;·&nbsp; ${dato}</p></div></div>
   <div class="meta"><div><div class="meta-label">Sagsnummer</div><div class="meta-value">${cn}</div></div><div><div class="meta-label">Ordrer</div><div class="meta-value">${ordreNr||'—'}</div></div><div><div class="meta-label">Dato</div><div class="meta-value">${dato}</div></div></div>
   <div class="summary-box"><div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${valgte.length}</div></div><div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div></div>
   <div class="section-title">Samlet returliste</div>
@@ -2028,14 +2028,14 @@ async function doChat(){
   const area=document.getElementById('chat');
   area.innerHTML+=`<div class="msg msg-user"><div class="bubble">${msg}</div></div>`;
   const tid='tid'+Date.now();
-  area.innerHTML+=`<div class="msg msg-ai" id="${tid}"><div class="avatar">BD</div><div class="bubble"><span class="spin"></span></div></div>`;
+  area.innerHTML+=`<div class="msg msg-ai" id="${tid}"><div class="avatar">RF</div><div class="bubble"><span class="spin"></span></div></div>`;
   area.scrollTop=area.scrollHeight;
   try{
     const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({message:msg,context:ctx})});
     const d=await r.json();
     const reply=d.reply||d.error||'Prøv igen.';
-    document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">${reply.replace(/\n/g,'<br>')}</div></div>`;
-  }catch(e){document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">BD</div><div class="bubble">Fejl: ${e.message}</div></div>`;}
+    document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">RF</div><div class="bubble">${reply.replace(/\n/g,'<br>')}</div></div>`;
+  }catch(e){document.getElementById(tid).outerHTML=`<div class="msg msg-ai"><div class="avatar">RF</div><div class="bubble">Fejl: ${e.message}</div></div>`;}
   area.scrollTop=area.scrollHeight;
 }
 
