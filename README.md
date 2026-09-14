@@ -1,4 +1,4 @@
-# BD Retur-assistent — Opsætningsvejledning
+# ReturnFlow — Opsætningsvejledning
 
 ## Hvad er dette?
 En SaaS-applikation der hjælper BD-medarbejdere med at håndtere materialeretur.
@@ -6,7 +6,7 @@ Brugere logger ind, uploader SAP-følgesedler og får automatisk en samlet retur
 
 ## Mappestruktur
 ```
-bd-retur-app/
+returnflow/
 ├── api/
 │   ├── _auth.js          # JWT-hjælper (deles af alle routes)
 │   ├── analyse.js        # Modtager PDF'er → kalder Anthropic → returnerer data
@@ -26,7 +26,7 @@ bd-retur-app/
 ## Trin 1 — GitHub
 
 1. Opret en gratis konto på **github.com**
-2. Klik "New repository" → navngiv det `bd-retur-app` → "Create"
+2. Klik "New repository" → navngiv det `returnflow` → "Create"
 3. Upload alle filer fra denne mappe til repositoriet
 
 ---
@@ -34,7 +34,7 @@ bd-retur-app/
 ## Trin 2 — Vercel (hosting, gratis)
 
 1. Gå til **vercel.com** og log ind med GitHub
-2. Klik "Add New Project" → vælg dit `bd-retur-app` repository
+2. Klik "Add New Project" → vælg dit `returnflow` repository
 3. Klik "Deploy" — Vercel bygger appen automatisk
 
 ### Tilføj Vercel KV (database til brugere)
@@ -61,7 +61,7 @@ Gå til dit projekt → "Settings" → "Environment Variables" og tilføj:
 
 1. Opret konto på **stripe.com**
 2. Gå til "Products" → "Add product"
-   - Navn: "BD Retur-assistent Pro"
+   - Navn: "ReturnFlow Pro"
    - Pris: f.eks. 199 kr/måned (recurring)
    - Kopiér **Price ID** (`price_...`) — gem det
 3. Gå til "Developers" → "Webhooks" → "Add endpoint"

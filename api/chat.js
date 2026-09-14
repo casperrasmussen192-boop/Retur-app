@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 800,
-      system: `Du er BD Brødrene Dahls retur-assistent. Sagens data:\n${context}\nSvar kort og præcist på dansk.`,
+      system: `Du er ReturnFlow, en retur-assistent til Brødrene Dahl-dokumenter. Sagens data:\n${context}\nSvar kort og præcist på dansk.`,
       messages: [{ role: "user", content: message }],
     });
     const reply = response.content.map((c) => c.text || "").join("");
