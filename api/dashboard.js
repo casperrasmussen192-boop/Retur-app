@@ -67,11 +67,14 @@ export default async function handler(req, res) {
       (b.analyser + b.returneringer) - (a.analyser + a.returneringer)
     );
 
-    // ── Samlet gennemsnitlig tid pr. retur på tværs af hele firmaet ──
-    const returHændelser = alleHændelser.filter(h => h.type === "retur" && h.varighedSek);
-    const gnsVarighedSekTotal = returHændelser.length
-      ? Math.round(returHændelser.reduce((s, h) => s + h.varighedSek, 0) / returHændelser.length)
-      : null;
+    // ── Sager der er analyseret, men hvor ingen retur er registreret endnu ──
+    const venterPaaRetur = aktiveSager.filter(s => (s.ordrer || 0) > 0 && (s.returneringer || 0) === 0).length;
+
+    // ── Fejlede filer de seneste 7 dage — på tværs af de hentede hændelser ──
+    const SYV_DAGE = 7 * 24 * 60 * 60 * 1000;
+    const fejledeSeneste7Dage = alleHændelser
+      .filter(h => h.type === "analyse" && (Date.now() - (h.ts || 0)) <= SYV_DAGE)
+      .reduce((sum, h) => sum + (h.fejlede || 0), 0);
 
     return res.status(200).json({
       nøgletal: {
@@ -81,7 +84,8 @@ export default async function handler(req, res) {
         totalOrdrer,
         totalEnheder,
         totalReturneringer,
-        gnsVarighedSekTotal,
+        venterPaaRetur,
+        fejledeSeneste7Dage,
       },
       senesteAktivitet,
       montoerStats,

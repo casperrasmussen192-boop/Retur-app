@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   // POST — tilføj en ny hændelse til tidslinjen
   if (req.method === "POST") {
     try {
-      const { type, titel, linjer, totalAntal, varighedSek } = req.body;
+      const { type, titel, linjer, totalAntal, varighedSek, fejlede } = req.body;
       if (!type || !titel) return res.status(400).json({ error: "Angiv type og titel" });
 
       const hændelse = {
@@ -45,6 +45,7 @@ export default async function handler(req, res) {
         linjer: linjer || [], // [{navn, varenr, antal, enhed}]
         totalAntal: totalAntal || 0,
         varighedSek: varighedSek || null, // Tid brugt fra sag åbnet til retur genereret
+        fejlede: fejlede || 0, // Antal filer der ikke kunne læses ved en 'analyse'-hændelse
         udførtAf: user.navn || user.email,
         ts: Date.now(),
       };
