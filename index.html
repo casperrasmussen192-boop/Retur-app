@@ -1076,9 +1076,8 @@ async function hentDashboard(){
       ? aktivitet.map(h=>{
           const dato=new Date(h.ts).toLocaleDateString('da-DK');
           const tid=new Date(h.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
-          const erRetur=h.type==='retur';
-          const dotColor=erRetur?'var(--amber)':'var(--accent)';
-          const badge=erRetur?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':'<span class="badge b-blue">Analyse</span>';
+          const dotColor=h.type==='retur'?'var(--amber)':h.type==='sendt'?'var(--green)':'var(--accent)';
+          const badge=h.type==='retur'?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':h.type==='sendt'?'<span class="badge b-green">Sendt til BD</span>':'<span class="badge b-blue">Analyse</span>';
           return `<div class="tl-item">
             <div style="position:relative;flex-shrink:0;"><div class="tl-dot" style="background:${dotColor}"></div><div class="tl-vline"></div></div>
             <div style="flex:1;padding-bottom:14px;">
@@ -1355,9 +1354,8 @@ async function hentHistorik(){
     el.innerHTML='<div class="tl">'+hændelser.map(h=>{
       const dato=new Date(h.ts).toLocaleDateString('da-DK');
       const tid=new Date(h.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
-      const erRetur=h.type==='retur';
-      const dotColor=erRetur?'var(--amber)':'var(--accent)';
-      const badge=erRetur?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':'<span class="badge b-blue">Analyse</span>';
+      const dotColor=h.type==='retur'?'var(--amber)':h.type==='sendt'?'var(--green)':'var(--accent)';
+      const badge=h.type==='retur'?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':h.type==='sendt'?'<span class="badge b-green">Sendt til BD</span>':'<span class="badge b-blue">Analyse</span>';
       const varighedTxt=formatVarighed(h.varighedSek);
       const linjerHtml=(h.linjer||[]).map(l=>`<div style="font-size:12px;color:var(--ink-3);">· ${l.navn} — ${Math.round(l.antal)} ${l.enhed}</div>`).join('');
       return `<div class="tl-item">
@@ -1468,6 +1466,7 @@ async function rydSession(){
 // ── State ──
 let files=[],parsed=null,ctx='',returData=[];
 let soegTerm='',globalSearchTerm='';
+let fejledeAktuelle=[];
 
 // ── Drag & drop ──
 const dz=document.getElementById('dz'),fi=document.getElementById('fi');
@@ -1678,18 +1677,84 @@ async function go(){
     logHistorik('analyse', files.length+' følgesedler analyseret', [], alleOrdrer.length, null, fejledeFiler.length);
     document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">RF</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
 
-    if(fejledeFiler.length>0){
-      const errEl=document.getElementById('err');
-      errEl.style.display='block';
-      errEl.style.background='#fffbeb';
-      errEl.style.borderColor='#fde68a';
-      errEl.style.color='#92400e';
-      errEl.innerHTML=`⚠ ${fejledeFiler.length} fil${fejledeFiler.length>1?'er':''} kunne ikke læses og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeFiler.join('<br>')}</span><br><br>Tjek disse filer manuelt eller prøv at uploade dem separat.`;
-    }
+    fejledeAktuelle=fejledeFiler;
+    visFejlBanner();
   }catch(err){
     showErr('Fejl under analyse: ' + err.message);
   }
   btn.disabled=false;
+}
+
+// ── Fejlbanner + retry af enkelte fejlede filer (uden at køre hele batchen igen) ──
+function visFejlBanner(){
+  const errEl=document.getElementById('err');
+  if(!fejledeAktuelle.length){errEl.style.display='none';return;}
+  errEl.style.display='block';
+  errEl.style.background='#fffbeb';
+  errEl.style.borderColor='#fde68a';
+  errEl.style.color='#92400e';
+  errEl.innerHTML=`⚠ ${fejledeAktuelle.length} fil${fejledeAktuelle.length>1?'er':''} kunne ikke læses og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeAktuelle.join('<br>')}</span><br><br>
+    Tjek disse filer, eller upload erstatningsfiler for kun de fejlede — resten af analysen køres ikke igen:<br><br>
+    <button type="button" onclick="document.getElementById('retry-file-input').click()">📎 Vælg erstatningsfiler og prøv igen</button>
+    <input type="file" id="retry-file-input" accept="application/pdf" multiple style="display:none" onchange="retryFejledeFiler(this.files)"/>
+    <span id="retry-status" style="margin-left:8px;font-size:12px;"></span>`;
+}
+
+function mergeOrdrer(baseOrdrer, nyeOrdrer){
+  const resultat=baseOrdrer.map(o=>({...o,linjer:[...o.linjer]}));
+  for(const nyOrd of nyeOrdrer||[]){
+    const eksisterende=resultat.find(o=>o.ordrenr===nyOrd.ordrenr);
+    if(eksisterende){
+      for(const l of nyOrd.linjer||[]){
+        const dup=eksisterende.linjer.find(el=>el.varenr===l.varenr&&el.pos===l.pos&&el.antal===l.antal&&el.navn===l.navn);
+        if(!dup)eksisterende.linjer.push(l);
+      }
+    }else{
+      resultat.push(nyOrd);
+    }
+  }
+  return resultat;
+}
+
+async function retryFejledeFiler(fileList){
+  const nyeFiler=Array.from(fileList||[]);
+  if(!nyeFiler.length)return;
+  const apiKey=getApiKey();
+  const caseNum=document.getElementById('case-num')?.value.trim()||'ukendt';
+  const statusEl=document.getElementById('retry-status');
+  const jobId=genererJobId();
+  const forsøgteNavne=nyeFiler.map(f=>f.name);
+  try{
+    if(statusEl)statusEl.textContent='Uploader og analyserer...';
+    const { filer, fejledeUploads } = await uploadFilerTilBlob(nyeFiler, jobId, apiKey);
+    if(!filer.length){
+      if(statusEl)statusEl.textContent='Kunne ikke uploade filerne — prøv igen.';
+      return;
+    }
+    const startResp=await fetch('/api/queue-analyse',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({ jobId, sagsnummer:caseNum, filer, model:document.querySelector('input[name=model]:checked')?.value||'haiku' })
+    });
+    if(!startResp.ok){const e=await startResp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${startResp.status}`);}
+    const job=await pollJobStatus(jobId,apiKey,(j)=>{if(statusEl)statusEl.textContent=`Analyserer... ${(j.færdige||0)+(j.fejlede?.length||0)}/${j.antalFiler}`;});
+
+    parsed.ordrer=mergeOrdrer(parsed.ordrer||[],job.ordrer||[]);
+    ctx=JSON.stringify(parsed);
+
+    const stadigFejlede=[...fejledeUploads,...(job.fejlede||[])];
+    // Fjern de filnavne der nu blev behandlet (succes eller ej) fra den gamle liste, og læg evt. nye fejl til
+    fejledeAktuelle=fejledeAktuelle.filter(f=>!forsøgteNavne.some(n=>f.startsWith(n)));
+    fejledeAktuelle=[...fejledeAktuelle,...stadigFejlede];
+    visFejlBanner();
+
+    renderResults(caseNum);
+    gemSession();
+    logHistorik('analyse', nyeFiler.length+' erstatningsfil(er) analyseret', [], (job.ordrer||[]).length, null, stadigFejlede.length);
+    if(statusEl && !fejledeAktuelle.length)statusEl.textContent='';
+  }catch(err){
+    if(statusEl)statusEl.textContent='Fejl: '+err.message;
+  }
 }
 
 // ── Totals & render ──
@@ -1800,9 +1865,9 @@ function renderReturTable(){
       :`<td class="td-dim">—</td>`;
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
-      <td>${r.navn}${r.beskrivelse?`<span class="hidden-search">${r.beskrivelse}</span>`:''}</td>
-      <td class="td-mono">${r.varenr||'—'}</td>
-      <td class="td-dim">${Math.round(r.antal)} ${r.enhed}</td>
+      <td><input class="note-input" type="text" value="${r.navn}" title="Ret varenavn hvis AI'en har læst forkert" onchange="updateFelt(${i},'navn',this.value)"/>${r.beskrivelse?`<span class="hidden-search">${r.beskrivelse}</span>`:''}</td>
+      <td><input class="note-input" type="text" value="${r.varenr||''}" title="Ret varenr. hvis AI'en har læst forkert" onchange="updateFelt(${i},'varenr',this.value)"/></td>
+      <td><div class="retur-qty-cell"><input class="note-input" type="number" min="0" value="${Math.round(r.antal)}" title="Ret antal købt hvis AI'en har læst forkert" onchange="updateFelt(${i},'antal',this.value)" style="width:70px;"/><span class="max-lbl">${r.enhed}</span></div></td>
       ${tidlCell}
       <td><div class="retur-qty-cell"><input type="number" min="0" max="${kanRetur}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(kanRetur)}</span></div></td>
       <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
@@ -1832,6 +1897,11 @@ function updateQty(i,val){
   gemSession();
 }
 function updateBadge(){const n=returData.filter(r=>r.checked).length;document.getElementById('retur-badge').textContent=`${n} vare${n===1?'':'r'} valgt`;}
+function updateFelt(i,felt,val){
+  returData[i][felt]=felt==='antal'?(Number(val)||0):val;
+  renderReturTable();
+  gemSession();
+}
 
 // ── Fordeling ──
 function beregnFordeling(){
@@ -1885,7 +1955,7 @@ function genererRetur(){
   const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
   let html=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
     <div><div style="font-size:13px;color:var(--ink-2);margin-bottom:2px;">Sag: <strong style="color:var(--ink)">${caseNum}</strong></div><div style="font-size:12px;color:var(--ink-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
-    <div style="display:flex;gap:8px;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button><button onclick="sendRetur()">✉ Send retur til BD</button></div>
   </div>`;
   html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:8px;">Samlet returliste</div>
   <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
@@ -1931,20 +2001,38 @@ function genererRetur(){
   };
 }
 
-function copyRetur(){
+function byggReturTekst(){
   let valgte=returData.filter(r=>r.checked&&r.returAntal>0);
   if(!valgte.length&&window._returSnapshot?.length){
     returData=window._returSnapshot;
     valgte=returData;
   }
   const cn=document.getElementById('case-num').value;
-  const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).join(', ');
   const fordeling=beregnFordeling();
   let s=`RETURLISTE — Sag: ${cn}\nDato: ${new Date().toLocaleDateString('da-DK')}\n\nSAMLET:\n`;
   valgte.forEach(r=>{s+=`  ${r.navn} (${r.varenr}): ${Math.round(r.returAntal)} ${r.enhed}`;if(r.note)s+=` — ${r.note}`;s+='\n';});
   s+=`\nFORDELING PR. ORDRE:\n`;
   fordeling.forEach(ord=>{if(!ord.linjer.length)return;s+=`\n${ord.ordrenr}${ord.dato?' ('+ord.dato+')':''}:\n`;ord.linjer.forEach(l=>{s+=`  [${l.pos||'—'}] ${l.navn} (${l.varenr}): ${Math.round(l.returAntal)} ${l.enhed}`;if(l.note)s+=` — ${l.note}`;s+='\n';});});
+  return {cn,valgte,s};
+}
+
+function copyRetur(){
+  const {s}=byggReturTekst();
   navigator.clipboard.writeText(s).then(()=>{const b=event.target;const o=b.textContent;b.textContent='Kopieret ✓';setTimeout(()=>b.textContent=o,2000);});
+}
+
+function sendRetur(){
+  const {cn,valgte,s}=byggReturTekst();
+  if(!valgte.length){alert('Ingen varer valgt til retur.');return;}
+  const subject='Returliste — Sag '+cn;
+  let body=s;
+  const FOR_LANG=1800; // mailto har en praktisk grænse på tværs af mailklienter
+  if(body.length>FOR_LANG){
+    body=body.slice(0,FOR_LANG)+'\n\n[... listen er for lang til e-mail-udkastet — brug "Kopier" i stedet og indsæt hele listen manuelt ...]';
+  }
+  window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const totalRetur=valgte.reduce((sum,r)=>sum+r.returAntal,0);
+  logHistorik('sendt','Returliste sendt til BD',valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})),Math.round(totalRetur));
 }
 
 function printRetur(){
