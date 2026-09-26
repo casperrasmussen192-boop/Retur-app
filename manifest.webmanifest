@@ -1,6 +1,6 @@
 {
-  "name": "ReturnFlow",
-  "short_name": "ReturnFlow",
+  "name": "Retura",
+  "short_name": "Retura",
   "description": "Retur-håndtering for materialer",
   "start_url": "/app",
   "scope": "/",
