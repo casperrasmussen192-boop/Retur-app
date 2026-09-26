@@ -4,6 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ReturnFlow — Log ind</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-512.png">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<meta name="theme-color" content="#0f4c81">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ReturnFlow">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#0a0a0a;--ink-2:#525252;--ink-3:#a3a3a3;--paper:#fafaf9;--surface:#fff;--border:#e7e5e4;--accent:#0f4c81;--accent-light:#e8f0f9;--radius:8px;--radius-sm:5px;--radius-lg:12px;}
@@ -81,6 +88,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 </div>
 
 <script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
 let regMode = 'firma';
 
 function sw(tab) {

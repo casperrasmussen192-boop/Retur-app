@@ -4,6 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ReturnFlow</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-512.png">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<meta name="theme-color" content="#0f4c81">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ReturnFlow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -947,6 +954,7 @@ tbody tr:hover td { background: var(--surface-2); }
 
 
 <script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
 // ── Global 401-håndtering: udløbet eller ugyldigt login sender automatisk til login-siden ──
 (function(){
   const _fetch = window.fetch.bind(window);
