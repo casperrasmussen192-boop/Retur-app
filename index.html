@@ -321,6 +321,18 @@ button.ghost {
 }
 button.ghost:hover { background: var(--surface-2); border-color: var(--border); }
 
+.btn-back {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-back:hover { background: var(--surface-2); border-color: var(--ink-3); }
+.btn-back .arrow { font-size: 16px; line-height: 1; }
+
 /* ── PROGRESS ── */
 .progress-wrap { margin-top: 12px; display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
 .progress-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
@@ -696,7 +708,7 @@ tbody tr:hover td { background: var(--surface-2); }
       <div class="card-title"><div class="card-icon">📋</div>Alle brugere</div>
       <div id="bruger-liste"><p style="font-size:13px;color:var(--ink-3);">Indlæser...</p></div>
     </div>
-    <button class="ghost" onclick="skjulAdmin()">← Tilbage til appen</button>
+    <button class="btn-back" onclick="skjulAdmin()"><span class="arrow">←</span> Tilbage til appen</button>
   </div>
 </div>
 
@@ -737,7 +749,7 @@ tbody tr:hover td { background: var(--surface-2); }
       </div>
     </div>
 
-    <button class="ghost" onclick="skjulDashboard()">← Tilbage til appen</button>
+    <button class="btn-back" onclick="skjulDashboard()"><span class="arrow">←</span> Tilbage til appen</button>
   </div>
 </div>
 
@@ -791,7 +803,7 @@ tbody tr:hover td { background: var(--surface-2); }
 <div class="page" id="main-page" style="display:none;">
   <div class="page-header">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-      <button class="ghost" onclick="tilbageTilSager()" style="font-size:15px;font-weight:500;height:42px;padding:0 18px;">← Ordreoversigt</button>
+      <button class="btn-back" onclick="tilbageTilSager()" style="font-size:15px;height:42px;padding:0 18px;"><span class="arrow">←</span> Ordreoversigt</button>
       <button class="ghost" onclick="afslutAktivSag()" style="font-size:13px;height:36px;padding:0 14px;">✓ Afslut sag</button>
     </div>
   </div>
@@ -883,7 +895,7 @@ tbody tr:hover td { background: var(--surface-2); }
 
       <div class="btn-row" style="margin-top:1.25rem;">
         <button class="success" onclick="genererRetur()">Generer returliste</button>
-        <button onclick="document.getElementById('retur-editor').style.display='none';document.getElementById('results').style.display='';">← Tilbage</button>
+        <button class="btn-back" onclick="document.getElementById('retur-editor').style.display='none';document.getElementById('results').style.display='';"><span class="arrow">←</span> Tilbage</button>
       </div>
     </div>
   </div>
