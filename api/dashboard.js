@@ -76,6 +76,20 @@ export default async function handler(req, res) {
       .filter(h => h.type === "analyse" && (Date.now() - (h.ts || 0)) <= SYV_DAGE)
       .reduce((sum, h) => sum + (h.fejlede || 0), 0);
 
+    // ── Mest returnerede varer — summeret på tværs af alle retur-hændelser ──
+    const pr_vare = {};
+    for (const h of alleHændelser) {
+      if (h.type !== "retur") continue;
+      for (const l of h.linjer || []) {
+        const key = l.varenr || l.navn || "?";
+        if (!pr_vare[key]) pr_vare[key] = { navn: l.navn, varenr: l.varenr || "", antal: 0, enhed: l.enhed || "stk" };
+        pr_vare[key].antal += Number(l.antal) || 0;
+      }
+    }
+    const mestReturneredeVarer = Object.values(pr_vare)
+      .sort((a, b) => b.antal - a.antal)
+      .slice(0, 8);
+
     return res.status(200).json({
       nøgletal: {
         aktiveSager: aktiveSager.length,
@@ -92,6 +106,7 @@ export default async function handler(req, res) {
       mestAktiveSager: [...alleSager]
         .sort((a, b) => (b.returneringer || 0) - (a.returneringer || 0))
         .slice(0, 5),
+      mestReturneredeVarer,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
