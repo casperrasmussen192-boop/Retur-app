@@ -123,8 +123,12 @@ VIGTIGT om pos.nr:
 - Sæt "pos": null hvis kolonnen ikke er synlig — opfind ALDRIG et pos.nr.
 - Fakturaer har INGEN pos-kolonne. Kun følgesedler har den.
 
+VIGTIGT om pris (kun test — bruges endnu ikke i appen):
+- Hvis der er en "Salgspris"-kolonne (typisk kun på fakturaer), så læs enhedsprisen per stk derfra.
+- Sæt "salgspris": null hvis kolonnen ikke er synlig eller værdien er 0,00 uden at være en reel pris — opfind ALDRIG en pris.
+
 Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<101... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<første linje>","beskrivelse":"<ekstra linjer eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}` },
+{"ordrer":[{"ordrenr":"<101... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<første linje>","beskrivelse":"<ekstra linjer eller tom>","antal":<tal>,"enhed":"<stk>","salgspris":null}]}]}` },
         ],
       }],
     });
