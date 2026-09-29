@@ -947,6 +947,31 @@ tbody tr:hover td { background: var(--surface-2); }
     </div>
   </div>
 
+  <!-- HURTIG REGISTRERING -->
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-icon">⚡</div>
+      Hurtig registrering
+    </div>
+    <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Til småting/spjældsager uden følgeseddel — skriv varenavn og antal, så lægges den direkte i returlisten. Findes varenavnet allerede (fx fra en analyseret fil), lægges antallet oveni i stedet for at oprette en ny linje.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field-group" style="flex:2;min-width:160px;margin-bottom:0;">
+        <label class="field-label">Varenavn</label>
+        <input type="text" id="hurtig-navn" class="note-input" placeholder="f.eks. Gevindstang 8mm"/>
+      </div>
+      <div class="field-group" style="flex:1;min-width:80px;margin-bottom:0;">
+        <label class="field-label">Antal</label>
+        <input type="number" min="0" id="hurtig-antal" class="note-input" placeholder="5"/>
+      </div>
+      <div class="field-group" style="flex:1;min-width:80px;margin-bottom:0;">
+        <label class="field-label">Enhed</label>
+        <input type="text" id="hurtig-enhed" class="note-input" placeholder="stk"/>
+      </div>
+      <button class="primary" onclick="hurtigRegistrering()" style="height:36px;">Tilføj til retur</button>
+    </div>
+    <div id="hurtig-status" style="font-size:13px;color:var(--green);margin-top:8px;"></div>
+  </div>
+
   <!-- RETUR EDITOR -->
   <div id="retur-editor" style="display:none;">
     <div class="card">
@@ -1888,7 +1913,7 @@ async function go(){
       return;
     }
 
-    parsed={ordrer:alleOrdrer};ctx=JSON.stringify(parsed);
+    parsed={ordrer:slaaManueltSammen(alleOrdrer)};ctx=JSON.stringify(parsed);
     setP(100,'Analyse fuldført ✓ ('+alleOrdrer.length+' ordrer)');
     setTimeout(()=>document.getElementById('pw').style.display='none',1000);
     renderResults(caseNum);
@@ -1981,6 +2006,93 @@ async function retryFejledeFiler(fileList){
 
 // ── Totals & render ──
 function matchWords(text,term){if(!term)return true;return term.split(/\s+/).filter(Boolean).every(w=>text.includes(w));}
+
+// Tolerant varenavn-sammenligning (store/små bogstaver + mellemrum ignoreres, ellers præcist match)
+function normNavn(s){return (s||'').toLowerCase().trim().replace(/\s+/g,' ');}
+
+// Flet evt. eksisterende manuelt registrerede varer (ordrenr "MANUEL") ind i nyligt
+// analyserede ordrer, matchet på tolerant varenavn — bruges når man analyserer filer
+// EFTER man allerede har hurtig-registreret noget, så det ikke ender som to linjer.
+function slaaManueltSammen(nyeOrdrer){
+  const manuelOrd=(parsed&&parsed.ordrer||[]).find(o=>o.ordrenr==='MANUEL');
+  if(!manuelOrd||!manuelOrd.linjer||!manuelOrd.linjer.length)return nyeOrdrer;
+  const tilbageværende=[];
+  for(const ml of manuelOrd.linjer){
+    const mk=normNavn(ml.navn);
+    let fundet=false;
+    for(const ord of nyeOrdrer){
+      for(const l of ord.linjer||[]){
+        if(normNavn(l.navn)===mk){
+          l.antal=(Number(l.antal)||0)+(Number(ml.antal)||0);
+          fundet=true;
+          break;
+        }
+      }
+      if(fundet)break;
+    }
+    if(!fundet)tilbageværende.push(ml);
+  }
+  if(tilbageværende.length)nyeOrdrer.push({...manuelOrd,linjer:tilbageværende});
+  return nyeOrdrer;
+}
+
+function hurtigRegistrering(){
+  const navnInput=document.getElementById('hurtig-navn');
+  const antalInput=document.getElementById('hurtig-antal');
+  const enhedInput=document.getElementById('hurtig-enhed');
+  const navn=navnInput.value.trim();
+  const antal=Number(antalInput.value);
+  const enhed=enhedInput.value.trim()||'stk';
+  const statusEl=document.getElementById('hurtig-status');
+  if(!navn){alert('Skriv et varenavn.');return;}
+  if(!antal||antal<=0){alert('Angiv et antal større end 0.');return;}
+
+  if(!parsed)parsed={ordrer:[]};
+  const maalNavn=normNavn(navn);
+  let fundet=null;
+  for(const ord of parsed.ordrer){
+    for(const l of ord.linjer||[]){
+      if(normNavn(l.navn)===maalNavn){fundet=l;break;}
+    }
+    if(fundet)break;
+  }
+  if(fundet){
+    fundet.antal=(Number(fundet.antal)||0)+antal;
+  }else{
+    let manuelOrd=parsed.ordrer.find(o=>o.ordrenr==='MANUEL');
+    if(!manuelOrd){
+      const idag=new Date();
+      const datoStr=`${String(idag.getDate()).padStart(2,'0')}-${String(idag.getMonth()+1).padStart(2,'0')}-${String(idag.getFullYear()).slice(-2)}`;
+      manuelOrd={ordrenr:'MANUEL',type:'manuel',dato:datoStr,linjer:[]};
+      parsed.ordrer.push(manuelOrd);
+    }
+    manuelOrd.linjer.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed});
+  }
+  ctx=JSON.stringify(parsed);
+
+  // Læg den samtidig direkte ind i returlisten, markeret til retur (det er jo pointen med hurtig registrering)
+  let row=returData.find(r=>normNavn(r.navn)===maalNavn);
+  if(row){
+    row.antal=(Number(row.antal)||0)+antal;
+    row.returAntal=(Number(row.returAntal)||0)+antal;
+    row.checked=true;
+  }else{
+    returData.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed,returAntal:antal,checked:true,note:'Manuelt registreret'});
+  }
+
+  navnInput.value='';antalInput.value='';enhedInput.value='';
+  const caseNum=document.getElementById('case-num')?.value||'ukendt';
+  renderResults(caseNum);
+  document.getElementById('results').style.display='';
+  if(document.getElementById('retur-editor').style.display!=='none'){renderReturTable();updateBadge();}
+  gemSession();
+
+  if(statusEl){
+    statusEl.textContent=`✓ ${navn} tilføjet (${antal} ${enhed})`;
+    setTimeout(()=>{if(statusEl.textContent.startsWith('✓'))statusEl.textContent='';},3000);
+  }
+  navnInput.focus();
+}
 
 function getTotals(){
   if(!parsed)return{};
