@@ -582,6 +582,8 @@ tbody tr:hover td { background: var(--surface-2); }
   .topnav { padding: 0 1rem; gap: 10px; }
   .nav-title { display: none; }
   #top-navn { display: none; } /* Navn fylder for meget på små skærme — rolle-badge er nok */
+  .nav-ordreoversigt-txt { display: none; } /* Kun pilen vises på små skærme, for at spare plads */
+  #nav-ordreoversigt-btn { padding: 0 8px; }
   .page { padding: 1rem 0.75rem; }
   .card { padding: 1rem; border-radius: 10px; }
 
@@ -675,6 +677,7 @@ tbody tr:hover td { background: var(--surface-2); }
       <span id="top-navn"></span>
       <span class="plan-chip" id="top-rolle"></span>
     </div>
+    <button class="btn-back" id="nav-ordreoversigt-btn" onclick="gaaTilOrdreoversigt()" style="font-size:12px;height:30px;padding:0 12px;"><span class="arrow">←</span> <span class="nav-ordreoversigt-txt">Ordreoversigt</span></button>
     <button class="ghost" id="dashboard-btn" onclick="visDashboard()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Dashboard</button>
     <button class="ghost" id="admin-btn" onclick="visAdmin()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Montører</button>
     <button class="ghost" onclick="logout()" style="font-size:12px;height:30px;padding:0 12px;">Log ud</button>
@@ -1344,6 +1347,16 @@ async function aabnSag(sagsnummer){
 function tilbageTilSager(){
   aktivSagsnummer=null;
   document.getElementById('main-page').style.display='none';
+  document.getElementById('view-sagsoversigt').style.display='';
+  hentSagListe();
+}
+
+// Global "Ordreoversigt"-knap i toppen — skjuler alle andre visninger, uanset hvor man er i appen
+function gaaTilOrdreoversigt(){
+  aktivSagsnummer=null;
+  document.getElementById('main-page').style.display='none';
+  document.getElementById('view-admin').style.display='none';
+  document.getElementById('view-dashboard').style.display='none';
   document.getElementById('view-sagsoversigt').style.display='';
   hentSagListe();
 }
