@@ -141,6 +141,16 @@ Returner KUN JSON uden markdown:
     await redis.rpush(resultaterKey, JSON.stringify(data.ordrer || []));
     await redis.expire(resultaterKey, TTL);
 
+    // Gem varenavnene i firmaets samlede materialebibliotek (bruges til autofuldførelse
+    // ved "Hurtig registrering" på tværs af alle sager). Fejler dette, skal det ikke
+    // vælte selve fil-behandlingen — derfor egen try/catch.
+    try {
+      const navne = [...new Set(
+        (data.ordrer || []).flatMap(o => (o.linjer || []).map(l => (l.navn || "").trim())).filter(Boolean)
+      )];
+      if (navne.length) await redis.sadd(`firma:${firmaId}:materialer`, ...navne);
+    } catch {}
+
     // Øg tælleren atomisk (INCR kan ikke miste opdateringer, uanset hvor mange der kører samtidig)
     await redis.incr(countKey);
     await redis.expire(countKey, TTL);

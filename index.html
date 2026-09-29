@@ -1538,7 +1538,20 @@ async function aabnSag(sagsnummer){
 
   indlaesReturTotal(sagsnummer);
   await genopretSession(sagsnummer);
+  hentMaterialeBibliotek();
   window._sagStartTid=Date.now(); // Starter stopur for tidsmåling pr. retur
+}
+
+// Firmaets samlede materialebibliotek (alle sager) — hentes én gang pr. sagsåbning,
+// bruges som ekstra kilde til forslag i "Hurtig registrering".
+async function hentMaterialeBibliotek(){
+  try{
+    const resp=await fetch('/api/materialer',{headers:{'Authorization':'Bearer '+getApiKey()}});
+    if(!resp.ok)return;
+    const data=await resp.json();
+    window._materialeBibliotek=data.navne||[];
+    opdaterHurtigNavnListe((parsed&&parsed.ordrer||[]).flatMap(o=>(o.linjer||[]).map(l=>l.navn)));
+  }catch(e){}
 }
 
 function tilbageTilSager(){
@@ -2089,6 +2102,11 @@ function hurtigRegistrering(){
   if(document.getElementById('retur-editor').style.display!=='none'){renderReturTable();updateBadge();}
   gemSession();
 
+  // Gem navnet i firmaets materialebibliotek, så det også foreslås på fremtidige sager
+  if(!window._materialeBibliotek)window._materialeBibliotek=[];
+  if(!window._materialeBibliotek.some(n=>normNavn(n)===maalNavn))window._materialeBibliotek.push(navn);
+  fetch('/api/materialer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({navne:[navn]})}).catch(()=>{});
+
   if(statusEl){
     statusEl.textContent=`✓ ${navn} tilføjet (${antal} ${enhed})`;
     setTimeout(()=>{if(statusEl.textContent.startsWith('✓'))statusEl.textContent='';},3000);
@@ -2135,7 +2153,8 @@ function renderResults(caseNum){
 function opdaterHurtigNavnListe(navne){
   const dl=document.getElementById('hurtig-navn-liste');
   if(!dl)return;
-  const unikke=[...new Set((navne||[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'da'));
+  const alle=[...(navne||[]),...(window._materialeBibliotek||[])];
+  const unikke=[...new Set(alle.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'da'));
   dl.innerHTML=unikke.map(n=>`<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('');
 }
 
