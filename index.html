@@ -957,7 +957,8 @@ tbody tr:hover td { background: var(--surface-2); }
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
       <div class="field-group" style="flex:2;min-width:160px;margin-bottom:0;">
         <label class="field-label">Varenavn</label>
-        <input type="text" id="hurtig-navn" class="note-input" placeholder="f.eks. Gevindstang 8mm"/>
+        <input type="text" id="hurtig-navn" class="note-input" placeholder="f.eks. Gevindstang 8mm" list="hurtig-navn-liste" autocomplete="off"/>
+        <datalist id="hurtig-navn-liste"></datalist>
       </div>
       <div class="field-group" style="flex:1;min-width:80px;margin-bottom:0;">
         <label class="field-label">Antal</label>
@@ -2126,6 +2127,16 @@ function renderResults(caseNum){
     ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}${t[k].beskrivelse?`<span class="hidden-search">${t[k].beskrivelse}</span>`:''}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
     :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
   renderPrOrdre();
+  opdaterHurtigNavnListe(ks.map(k=>t[k].navn));
+}
+
+// Foreslår kendte varenavne fra sagen når man skriver i "Hurtig registrering" —
+// så man rammer det præcise navn i stedet for at gætte/genskrive det selv.
+function opdaterHurtigNavnListe(navne){
+  const dl=document.getElementById('hurtig-navn-liste');
+  if(!dl)return;
+  const unikke=[...new Set((navne||[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'da'));
+  dl.innerHTML=unikke.map(n=>`<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('');
 }
 
 function renderPrOrdre(){
