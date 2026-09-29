@@ -76,18 +76,21 @@ export default async function handler(req, res) {
       .filter(h => h.type === "analyse" && (Date.now() - (h.ts || 0)) <= SYV_DAGE)
       .reduce((sum, h) => sum + (h.fejlede || 0), 0);
 
-    // ── Mest returnerede varer — summeret på tværs af alle retur-hændelser ──
+    // ── Mest returnerede varer — rangeret efter hvor mange GANGE varen er lagt retur,
+    // ikke det samlede antal stk. Én stor engangsretur skal ikke overskygge en vare der
+    // går igen retur for retur (det er mønsteret der er interessant, ikke enkeltvolumen). ──
     const pr_vare = {};
     for (const h of alleHændelser) {
       if (h.type !== "retur") continue;
       for (const l of h.linjer || []) {
         const key = l.varenr || l.navn || "?";
-        if (!pr_vare[key]) pr_vare[key] = { navn: l.navn, varenr: l.varenr || "", antal: 0, enhed: l.enhed || "stk" };
+        if (!pr_vare[key]) pr_vare[key] = { navn: l.navn, varenr: l.varenr || "", antal: 0, antalGange: 0, enhed: l.enhed || "stk" };
         pr_vare[key].antal += Number(l.antal) || 0;
+        pr_vare[key].antalGange += 1;
       }
     }
     const mestReturneredeVarer = Object.values(pr_vare)
-      .sort((a, b) => b.antal - a.antal)
+      .sort((a, b) => b.antalGange - a.antalGange || b.antal - a.antal)
       .slice(0, 8);
 
     return res.status(200).json({

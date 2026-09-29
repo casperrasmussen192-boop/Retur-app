@@ -1107,7 +1107,10 @@ async function hentDashboard(){
             <span style="font-size:13px;">${v.navn}</span>
             ${v.varenr?`<span class="td-mono" style="font-size:11px;color:var(--ink-3);margin-left:8px;">${v.varenr}</span>`:''}
           </div>
-          <span class="badge" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);">${Math.round(v.antal)} ${v.enhed}</span>
+          <span style="display:flex;gap:6px;align-items:center;">
+            <span class="badge" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);">${v.antalGange} gang${v.antalGange===1?'':'e'}</span>
+            <span style="font-size:11px;color:var(--ink-3);">${Math.round(v.antal)} ${v.enhed} i alt</span>
+          </span>
         </div>`).join('')
       : '<p style="font-size:13px;color:var(--ink-3);">Ingen returneringer endnu.</p>';
 
