@@ -579,8 +579,9 @@ tbody tr:hover td { background: var(--surface-2); }
 
 @media(max-width:640px) {
   /* Layout */
-  .topnav { padding: 0 1rem; }
+  .topnav { padding: 0 1rem; gap: 10px; }
   .nav-title { display: none; }
+  #top-navn { display: none; } /* Navn fylder for meget på små skærme — rolle-badge er nok */
   .page { padding: 1rem 0.75rem; }
   .card { padding: 1rem; border-radius: 10px; }
 
