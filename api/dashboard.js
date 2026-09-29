@@ -10,10 +10,7 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
-// Firmaets interne timepris (kr/time ex moms) — bruges KUN til at omregne målt
-// tidsforbrug til kr. Ikke en pris fra BD, og ikke et "sparet tid"-estimat —
-// bare hvad den registrerede tid rent faktisk koster i løn.
-const TIMEPRIS_KR = 700;
+const STANDARD_TIMEPRIS_KR = 700;
 
 export default async function handler(req, res) {
   const user = verifyToken(req);
@@ -22,6 +19,13 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   try {
+    // ── Firmaets egen timepris (kr/time ex moms), bruges KUN til at omregne målt
+    // tidsforbrug til kr. Ikke en pris fra BD, og ikke et "sparet tid"-estimat —
+    // bare hvad den registrerede tid rent faktisk koster i løn. ──
+    const indstRaw = await redis.get("firma:" + user.firmaId + ":indstillinger");
+    const indstillinger = indstRaw ? (typeof indstRaw === "string" ? JSON.parse(indstRaw) : indstRaw) : {};
+    const TIMEPRIS_KR = Number(indstillinger.timepris) || STANDARD_TIMEPRIS_KR;
+
     // ── Hent alle sager for firmaet ──
     const sagerHash = await redis.hgetall("firma:" + user.firmaId + ":sager");
     const alleSager = Object.values(sagerHash || {}).map(v => typeof v === "string" ? JSON.parse(v) : v);

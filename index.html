@@ -680,6 +680,7 @@ tbody tr:hover td { background: var(--surface-2); }
     <button class="btn-back" id="nav-ordreoversigt-btn" onclick="gaaTilOrdreoversigt()" style="font-size:12px;height:30px;padding:0 12px;"><span class="arrow">←</span> <span class="nav-ordreoversigt-txt">Ordreoversigt</span></button>
     <button class="ghost" id="dashboard-btn" onclick="visDashboard()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Dashboard</button>
     <button class="ghost" id="admin-btn" onclick="visAdmin()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Montører</button>
+    <button class="ghost" id="indstillinger-btn" onclick="visIndstillinger()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Indstillinger</button>
     <button class="ghost" onclick="logout()" style="font-size:12px;height:30px;padding:0 12px;">Log ud</button>
   </div>
 </nav>
@@ -713,6 +714,33 @@ tbody tr:hover td { background: var(--surface-2); }
       <div id="bruger-liste"><p style="font-size:13px;color:var(--ink-3);">Indlæser...</p></div>
     </div>
     <button class="btn-back" onclick="skjulAdmin()"><span class="arrow">←</span> Tilbage til appen</button>
+  </div>
+</div>
+
+<!-- INDSTILLINGER -->
+<div id="view-indstillinger" style="display:none;">
+  <div class="page">
+    <div class="page-header">
+      <h1 class="page-title">Indstillinger</h1>
+      <p class="page-sub">Firmaets egne indstillinger for beregninger og afsendelse</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-icon">⏱</div>Timepris</div>
+      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Bruges til at omregne registreret tidsforbrug til kr på dashboardet.</p>
+      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">Kr. pr. time (ex moms)</label>
+      <input type="number" min="0" id="inst-timepris" class="note-input" style="max-width:160px;" placeholder="700"/>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-icon">✉</div>E-mail til BD</div>
+      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Bruges som forudfyldt modtager når I trykker "Send retur til BD".</p>
+      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">E-mailadresse</label>
+      <input type="email" id="inst-bdemail" class="note-input" style="max-width:320px;" placeholder="retur@bd.dk"/>
+    </div>
+    <div class="btn-row" style="margin-bottom:1rem;">
+      <button class="success" onclick="gemIndstillinger()">Gem</button>
+      <span id="inst-status" style="font-size:13px;color:var(--green);align-self:center;"></span>
+    </div>
+    <button class="btn-back" onclick="skjulIndstillinger()"><span class="arrow">←</span> Tilbage til appen</button>
   </div>
 </div>
 
@@ -1009,11 +1037,13 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
     const elRolle=document.getElementById('top-rolle');
     const adminBtn=document.getElementById('admin-btn');
     const dashBtn=document.getElementById('dashboard-btn');
+    const instBtn=document.getElementById('indstillinger-btn');
     if(elNavn)elNavn.textContent=navn;
     if(elFirma)elFirma.textContent=firma;
     if(elRolle)elRolle.textContent=rolle==='admin'?'Admin':'Montør';
     if(adminBtn&&rolle==='admin')adminBtn.style.display='';
     if(dashBtn&&rolle==='admin')dashBtn.style.display='';
+    if(instBtn&&rolle==='admin')instBtn.style.display='';
   });
 })();
 function logout(){localStorage.removeItem('bd_token');localStorage.removeItem('bd_email');localStorage.removeItem('bd_navn');localStorage.removeItem('bd_firma');localStorage.removeItem('bd_rolle');window.location.href='/login';}
@@ -1032,6 +1062,8 @@ function getApiKey(){return localStorage.getItem('bd_token')||'';}
 function visAdmin(){
   document.getElementById('view-sagsoversigt').style.display='none';
   document.getElementById('main-page').style.display='none';
+  document.getElementById('view-dashboard').style.display='none';
+  document.getElementById('view-indstillinger').style.display='none';
   document.getElementById('view-admin').style.display='';
   hentBrugere();
 }
@@ -1050,6 +1082,7 @@ function visDashboard(){
   document.getElementById('view-sagsoversigt').style.display='none';
   document.getElementById('main-page').style.display='none';
   document.getElementById('view-admin').style.display='none';
+  document.getElementById('view-indstillinger').style.display='none';
   document.getElementById('view-dashboard').style.display='';
   document.getElementById('dash-loading').style.display='';
   document.getElementById('dash-content').style.display='none';
@@ -1062,6 +1095,56 @@ function skjulDashboard(){
   } else {
     document.getElementById('view-sagsoversigt').style.display='';
     hentSagListe();
+  }
+}
+
+async function visIndstillinger(){
+  document.getElementById('view-sagsoversigt').style.display='none';
+  document.getElementById('main-page').style.display='none';
+  document.getElementById('view-admin').style.display='none';
+  document.getElementById('view-dashboard').style.display='none';
+  document.getElementById('view-indstillinger').style.display='';
+  document.getElementById('inst-status').textContent='';
+  try{
+    const resp=await fetch('/api/indstillinger',{headers:{'Authorization':'Bearer '+getApiKey()}});
+    const data=await resp.json();
+    if(resp.ok){
+      document.getElementById('inst-timepris').value=data.indstillinger.timepris;
+      document.getElementById('inst-bdemail').value=data.indstillinger.bdEmail||'';
+    }
+  }catch(e){}
+}
+function skjulIndstillinger(){
+  document.getElementById('view-indstillinger').style.display='none';
+  if(aktivSagsnummer){
+    document.getElementById('main-page').style.display='';
+  } else {
+    document.getElementById('view-sagsoversigt').style.display='';
+    hentSagListe();
+  }
+}
+async function gemIndstillinger(){
+  const statusEl=document.getElementById('inst-status');
+  statusEl.style.color='var(--ink-2)';
+  statusEl.textContent='Gemmer...';
+  try{
+    const resp=await fetch('/api/indstillinger',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},
+      body:JSON.stringify({
+        timepris:document.getElementById('inst-timepris').value,
+        bdEmail:document.getElementById('inst-bdemail').value
+      })
+    });
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error||'Kunne ikke gemme');
+    window._bdEmail=data.indstillinger.bdEmail||'';
+    statusEl.style.color='var(--green)';
+    statusEl.textContent='Gemt ✓';
+    setTimeout(()=>statusEl.textContent='',2000);
+  }catch(e){
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='Fejl: '+e.message;
   }
 }
 async function hentDashboard(){
@@ -1391,6 +1474,7 @@ function gaaTilOrdreoversigt(){
   document.getElementById('main-page').style.display='none';
   document.getElementById('view-admin').style.display='none';
   document.getElementById('view-dashboard').style.display='none';
+  document.getElementById('view-indstillinger').style.display='none';
   document.getElementById('view-sagsoversigt').style.display='';
   hentSagListe();
 }
@@ -2106,16 +2190,25 @@ function copyRetur(){
   navigator.clipboard.writeText(s).then(()=>{const b=event.target;const o=b.textContent;b.textContent='Kopieret ✓';setTimeout(()=>b.textContent=o,2000);});
 }
 
-function sendRetur(){
+async function sendRetur(){
   const {cn,valgte,s}=byggReturTekst();
   if(!valgte.length){alert('Ingen varer valgt til retur.');return;}
+  let bdEmail=window._bdEmail;
+  if(bdEmail===undefined){
+    try{
+      const resp=await fetch('/api/indstillinger',{headers:{'Authorization':'Bearer '+getApiKey()}});
+      const data=await resp.json();
+      bdEmail=resp.ok?(data.indstillinger.bdEmail||''):'';
+    }catch(e){bdEmail='';}
+    window._bdEmail=bdEmail;
+  }
   const subject='Returliste — Sag '+cn;
   let body=s;
   const FOR_LANG=1800; // mailto har en praktisk grænse på tværs af mailklienter
   if(body.length>FOR_LANG){
     body=body.slice(0,FOR_LANG)+'\n\n[... listen er for lang til e-mail-udkastet — brug "Kopier" i stedet og indsæt hele listen manuelt ...]';
   }
-  window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href=`mailto:${encodeURIComponent(bdEmail||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   const totalRetur=valgte.reduce((sum,r)=>sum+r.returAntal,0);
   logHistorik('sendt','Returliste sendt til BD',valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})),Math.round(totalRetur));
 }
