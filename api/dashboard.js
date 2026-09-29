@@ -10,6 +10,11 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
+// Firmaets interne timepris (kr/time ex moms) — bruges KUN til at omregne målt
+// tidsforbrug til kr. Ikke en pris fra BD, og ikke et "sparet tid"-estimat —
+// bare hvad den registrerede tid rent faktisk koster i løn.
+const TIMEPRIS_KR = 700;
+
 export default async function handler(req, res) {
   const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
@@ -93,6 +98,27 @@ export default async function handler(req, res) {
       .sort((a, b) => b.antalGange - a.antalGange || b.antal - a.antal)
       .slice(0, 8);
 
+    // ── Tidsforbrug denne måned, omregnet til kr med firmaets timepris ──
+    // (Ikke et "sparet tid"-tal — det kan vi ikke bevise uden en manuel baseline.
+    // Bare hvad den registrerede tid nu rent faktisk koster i løn.)
+    const nu = new Date();
+    const startDenneMaaned = new Date(nu.getFullYear(), nu.getMonth(), 1).getTime();
+    const startSidsteMaaned = new Date(nu.getFullYear(), nu.getMonth() - 1, 1).getTime();
+
+    const returMedTid = alleHændelser.filter(h => h.type === "retur" && h.varighedSek);
+    const denneMaanedEvents = returMedTid.filter(h => (h.ts || 0) >= startDenneMaaned);
+    const sidsteMaanedEvents = returMedTid.filter(h => (h.ts || 0) >= startSidsteMaaned && (h.ts || 0) < startDenneMaaned);
+
+    const tidsforbrugDenneMaanedSek = denneMaanedEvents.reduce((sum, h) => sum + h.varighedSek, 0);
+    const tidsforbrugDenneMaanedKr = Math.round((tidsforbrugDenneMaanedSek / 3600) * TIMEPRIS_KR);
+
+    const gnsVarighedDenneMaaned = denneMaanedEvents.length
+      ? Math.round(denneMaanedEvents.reduce((s, h) => s + h.varighedSek, 0) / denneMaanedEvents.length)
+      : null;
+    const gnsVarighedSidsteMaaned = sidsteMaanedEvents.length
+      ? Math.round(sidsteMaanedEvents.reduce((s, h) => s + h.varighedSek, 0) / sidsteMaanedEvents.length)
+      : null;
+
     return res.status(200).json({
       nøgletal: {
         aktiveSager: aktiveSager.length,
@@ -103,6 +129,11 @@ export default async function handler(req, res) {
         totalReturneringer,
         venterPaaRetur,
         fejledeSeneste7Dage,
+        timepris: TIMEPRIS_KR,
+        tidsforbrugDenneMaanedSek,
+        tidsforbrugDenneMaanedKr,
+        gnsVarighedDenneMaaned,
+        gnsVarighedSidsteMaaned,
       },
       senesteAktivitet,
       montoerStats,

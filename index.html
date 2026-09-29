@@ -738,6 +738,16 @@ tbody tr:hover td { background: var(--surface-2); }
       </div>
 
       <div class="card">
+        <div class="card-title">Tidsforbrug denne måned</div>
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <span id="dash-tid-timer" style="font-family:'Geist Mono',monospace;font-size:28px;font-weight:500;color:var(--ink);">—</span>
+          <span id="dash-tid-kr" style="font-size:14px;color:var(--ink-2);">—</span>
+        </div>
+        <div id="dash-tid-trend" style="font-size:13px;color:var(--ink-2);"></div>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:8px;">Beregnet ud fra registreret tid pr. retur × <span id="dash-timepris">700</span> kr/time. Ikke et "sparet tid"-tal — bare hvad den tid I bruger nu rent faktisk koster.</div>
+      </div>
+
+      <div class="card">
         <div class="card-title"><div class="card-icon">👤</div>Aktivitet pr. montør</div>
         <div id="dash-montoerer"></div>
       </div>
@@ -1073,6 +1083,27 @@ async function hentDashboard(){
     const fejledeEl=document.getElementById('dash-fejlede');
     fejledeEl.textContent=n.fejledeSeneste7Dage||0;
     fejledeEl.style.color=n.fejledeSeneste7Dage>0?'var(--red)':'';
+
+    const tidTimer=(n.tidsforbrugDenneMaanedSek||0)/3600;
+    document.getElementById('dash-tid-timer').textContent=(tidTimer<0.1&&tidTimer>0?'<0.1':tidTimer.toFixed(1).replace('.',','))+' timer';
+    document.getElementById('dash-tid-kr').textContent='≈ '+(n.tidsforbrugDenneMaanedKr||0).toLocaleString('da-DK')+' kr i tid';
+    document.getElementById('dash-timepris').textContent=n.timepris||700;
+    const trendEl=document.getElementById('dash-tid-trend');
+    if(n.gnsVarighedDenneMaaned&&n.gnsVarighedSidsteMaaned){
+      const diff=n.gnsVarighedDenneMaaned-n.gnsVarighedSidsteMaaned;
+      const pct=Math.round(Math.abs(diff)/n.gnsVarighedSidsteMaaned*100);
+      if(Math.abs(diff)<5){
+        trendEl.innerHTML=`Gns. tid pr. retur: ${formatVarighed(n.gnsVarighedDenneMaaned)} — uændret ift. sidste måned`;
+      }else if(diff<0){
+        trendEl.innerHTML=`<span style="color:var(--green);">▼ ${pct}% hurtigere</span> pr. retur end sidste måned (${formatVarighed(n.gnsVarighedDenneMaaned)} i snit nu)`;
+      }else{
+        trendEl.innerHTML=`<span style="color:var(--amber);">▲ ${pct}% langsommere</span> pr. retur end sidste måned (${formatVarighed(n.gnsVarighedDenneMaaned)} i snit nu)`;
+      }
+    }else if(n.gnsVarighedDenneMaaned){
+      trendEl.textContent=`Gns. tid pr. retur denne måned: ${formatVarighed(n.gnsVarighedDenneMaaned)} (ingen tal fra sidste måned at sammenligne med endnu)`;
+    }else{
+      trendEl.textContent='Ingen returneringer registreret denne måned endnu.';
+    }
 
     const montEl=document.getElementById('dash-montoerer');
     const montStats=data.montoerStats||[];
