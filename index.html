@@ -122,6 +122,35 @@ body {
   border: 1px solid #bfdbfe;
 }
 
+.desktop-actions { display: flex; align-items: center; gap: 12px; }
+.mobile-menu-wrap { display: none; position: relative; }
+.mobile-menu-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  min-width: 160px;
+  padding: 6px;
+  z-index: 200;
+}
+.mobile-menu-dropdown.open { display: flex; flex-direction: column; gap: 2px; }
+.mobile-menu-dropdown button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  height: auto;
+}
+.mobile-menu-dropdown button:hover { background: var(--surface-2); }
+
 /* ── LAYOUT ── */
 .page {
   max-width: 920px;
@@ -583,6 +612,8 @@ tbody tr:hover td { background: var(--surface-2); }
   .nav-title { display: none; }
   #top-navn { display: none; } /* Navn fylder for meget på små skærme — rolle-badge er nok */
   .nav-ordreoversigt-txt { display: none; } /* Kun pilen vises på små skærme, for at spare plads */
+  .desktop-actions { display: none; } /* Dashboard/Montører/Indstillinger/Log ud samles i ⋮-menuen i stedet */
+  .mobile-menu-wrap { display: block; }
   #nav-ordreoversigt-btn { padding: 0 8px; }
   .page { padding: 1rem 0.75rem; }
   .card { padding: 1rem; border-radius: 10px; }
@@ -678,10 +709,21 @@ tbody tr:hover td { background: var(--surface-2); }
       <span class="plan-chip" id="top-rolle"></span>
     </div>
     <button class="btn-back" id="nav-ordreoversigt-btn" onclick="gaaTilOrdreoversigt()" style="font-size:12px;height:30px;padding:0 12px;"><span class="arrow">←</span> <span class="nav-ordreoversigt-txt">Ordreoversigt</span></button>
-    <button class="ghost" id="dashboard-btn" onclick="visDashboard()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Dashboard</button>
-    <button class="ghost" id="admin-btn" onclick="visAdmin()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Montører</button>
-    <button class="ghost" id="indstillinger-btn" onclick="visIndstillinger()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Indstillinger</button>
-    <button class="ghost" onclick="logout()" style="font-size:12px;height:30px;padding:0 12px;">Log ud</button>
+    <div class="desktop-actions">
+      <button class="ghost" id="dashboard-btn" onclick="visDashboard()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Dashboard</button>
+      <button class="ghost" id="admin-btn" onclick="visAdmin()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Montører</button>
+      <button class="ghost" id="indstillinger-btn" onclick="visIndstillinger()" style="font-size:12px;height:30px;padding:0 12px;display:none;">Indstillinger</button>
+      <button class="ghost" id="logud-btn" onclick="logout()" style="font-size:12px;height:30px;padding:0 12px;">Log ud</button>
+    </div>
+    <div class="mobile-menu-wrap">
+      <button class="ghost" id="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu" style="font-size:18px;width:34px;height:34px;padding:0;">⋮</button>
+      <div id="mobile-menu-dropdown" class="mobile-menu-dropdown">
+        <button id="dashboard-btn-m" onclick="visDashboard();toggleMobileMenu();" style="display:none;">Dashboard</button>
+        <button id="admin-btn-m" onclick="visAdmin();toggleMobileMenu();" style="display:none;">Montører</button>
+        <button id="indstillinger-btn-m" onclick="visIndstillinger();toggleMobileMenu();" style="display:none;">Indstillinger</button>
+        <button onclick="logout()">Log ud</button>
+      </div>
+    </div>
   </div>
 </nav>
 
@@ -1044,8 +1086,19 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
     if(adminBtn&&rolle==='admin')adminBtn.style.display='';
     if(dashBtn&&rolle==='admin')dashBtn.style.display='';
     if(instBtn&&rolle==='admin')instBtn.style.display='';
+    if(rolle==='admin'){
+      ['dashboard-btn-m','admin-btn-m','indstillinger-btn-m'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el)el.style.display='';
+      });
+    }
   });
 })();
+function toggleMobileMenu(){document.getElementById('mobile-menu-dropdown').classList.toggle('open');}
+document.addEventListener('click',(e)=>{
+  const wrap=document.querySelector('.mobile-menu-wrap');
+  if(wrap&&!wrap.contains(e.target))document.getElementById('mobile-menu-dropdown')?.classList.remove('open');
+});
 function logout(){localStorage.removeItem('bd_token');localStorage.removeItem('bd_email');localStorage.removeItem('bd_navn');localStorage.removeItem('bd_firma');localStorage.removeItem('bd_rolle');window.location.href='/login';}
 
 function indlaesReturTotal(caseNum){
