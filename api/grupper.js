@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
     content.push({
       type: "text",
-      text: `Læs disse SAP-dokumenter fra BD Brødrene Dahl.
+      text: `Læs disse SAP-dokumenter.
 For hvert dokument skal du finde:
 - Sagsnummer (kaldes "Deres reference" eller ligner f.eks. 255560-cr, 188432-AB)
 - Kundenavn

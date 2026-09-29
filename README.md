@@ -1,7 +1,7 @@
 # Retura — Opsætningsvejledning
 
 ## Hvad er dette?
-En SaaS-applikation der hjælper BD-medarbejdere med at håndtere materialeretur.
+En SaaS-applikation der hjælper håndværksvirksomheder med at håndtere materialeretur.
 Brugere logger ind, uploader SAP-følgesedler og får automatisk en samlet returliste.
 
 ## Mappestruktur

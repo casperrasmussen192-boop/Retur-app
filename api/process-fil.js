@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       model: modelNavn,
       max_tokens: 8000,
       temperature: 0,
-      system: "Du er en JSON-generator specialiseret i BD Brødrene Dahl SAP-dokumenter. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
+      system: "Du er en JSON-generator specialiseret i SAP-følgesedler og -fakturaer. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
       messages: [{
         role: "user",
         content: [
