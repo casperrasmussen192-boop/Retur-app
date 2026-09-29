@@ -1002,6 +1002,7 @@ tbody tr:hover td { background: var(--surface-2); }
             <th style="color:var(--amber)">Ret. i alt</th>
             <th>Denne retur</th>
             <th>Note</th>
+            <th style="width:32px;"></th>
           </tr></thead>
           <tbody id="retur-tbody"></tbody>
         </table>
@@ -2205,6 +2206,7 @@ function renderReturTable(){
       ${tidlCell}
       <td><div class="retur-qty-cell"><input type="number" min="0" max="${kanRetur}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(kanRetur)}</span></div></td>
       <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
+      <td><button type="button" class="ghost" onclick="sletVare(${i})" title="Slet varen helt fra listen" style="height:28px;width:28px;padding:0;color:var(--red);">🗑</button></td>
     </tr>`;
   }).join('');
 }
@@ -2234,6 +2236,27 @@ function updateBadge(){const n=returData.filter(r=>r.checked).length;document.ge
 function updateFelt(i,felt,val){
   returData[i][felt]=felt==='antal'?(Number(val)||0):val;
   renderReturTable();
+  gemSession();
+}
+function sletVare(i){
+  const r=returData[i];
+  if(!r)return;
+  if(!confirm(`Slet "${r.navn}" helt fra listen? Kan ikke fortrydes.`))return;
+
+  // Fjern varen fra parsed.ordrer også — ellers dukker den op igen næste gang listen genopbygges
+  const rowKey=(r.varenr||r.navn||'?').toString();
+  if(parsed&&parsed.ordrer){
+    for(const ord of parsed.ordrer){
+      ord.linjer=(ord.linjer||[]).filter(l=>(l.varenr||l.navn||'?').toString()!==rowKey);
+    }
+    parsed.ordrer=parsed.ordrer.filter(ord=>(ord.linjer||[]).length>0);
+    ctx=JSON.stringify(parsed);
+  }
+
+  returData.splice(i,1);
+  renderReturTable();
+  updateBadge();
+  renderResults(document.getElementById('case-num')?.value||'ukendt');
   gemSession();
 }
 
