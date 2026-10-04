@@ -803,7 +803,7 @@ tbody tr:hover td { background: var(--surface-2); }
         <div class="stat-box"><div class="stat-lbl">Venter på retur</div><div class="stat-val" id="dash-venter">0</div></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem;">
-        <div class="stat-box"><div class="stat-lbl">Enheder returneret</div><div class="stat-val" id="dash-returneringer">0</div></div>
+        <div class="stat-box"><div class="stat-lbl">Stille sager (14+ dage)</div><div class="stat-val" id="dash-stille">0</div></div>
         <div class="stat-box"><div class="stat-lbl">Fejlede filer (7 dage)</div><div class="stat-val" id="dash-fejlede">0</div></div>
       </div>
 
@@ -1242,7 +1242,9 @@ async function hentDashboard(){
     const n=data.nøgletal||{};
     document.getElementById('dash-aktive').textContent=n.aktiveSager||0;
     document.getElementById('dash-venter').textContent=n.venterPaaRetur||0;
-    document.getElementById('dash-returneringer').textContent=n.totalEnheder||0;
+    const stilleEl=document.getElementById('dash-stille');
+    stilleEl.textContent=n.stilleSager||0;
+    stilleEl.style.color=n.stilleSager>0?'var(--amber)':'';
     const fejledeEl=document.getElementById('dash-fejlede');
     fejledeEl.textContent=n.fejledeSeneste7Dage||0;
     fejledeEl.style.color=n.fejledeSeneste7Dage>0?'var(--red)':'';

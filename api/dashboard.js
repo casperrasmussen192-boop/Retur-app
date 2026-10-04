@@ -79,6 +79,10 @@ export default async function handler(req, res) {
     // ── Sager der er analyseret, men hvor ingen retur er registreret endnu ──
     const venterPaaRetur = aktiveSager.filter(s => (s.ordrer || 0) > 0 && (s.returneringer || 0) === 0).length;
 
+    // ── Aktive sager uden aktivitet i 14+ dage — dem der risikerer at blive glemt ──
+    const FJORTEN_DAGE = 14 * 24 * 60 * 60 * 1000;
+    const stilleSager = aktiveSager.filter(s => (Date.now() - (s.sidstOpdateretTs || 0)) >= FJORTEN_DAGE).length;
+
     // ── Fejlede filer de seneste 7 dage — på tværs af de hentede hændelser ──
     const SYV_DAGE = 7 * 24 * 60 * 60 * 1000;
     const fejledeSeneste7Dage = alleHændelser
@@ -132,6 +136,7 @@ export default async function handler(req, res) {
         totalEnheder,
         totalReturneringer,
         venterPaaRetur,
+        stilleSager,
         fejledeSeneste7Dage,
         timepris: TIMEPRIS_KR,
         tidsforbrugDenneMaanedSek,
