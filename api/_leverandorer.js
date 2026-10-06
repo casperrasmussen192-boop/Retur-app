@@ -73,9 +73,9 @@ export const GENKENDELSE = {
   system: "Du genkender hvilken leverandør et dansk handelsdokument stammer fra. Svar med PRÆCIS ét ord og intet andet.",
   prompt: `Hvilken leverandør har udstedt dette dokument (afsenderen — ikke kunden)?
 
-- "BD": Bygma/BD Byggedepot eller andet SAP-layout med "Ordrenr." 101..., "Leveres fra et andet lager", og kreditnotaer 300...
-- "AO": AO / EA Værktøj med logo "AO EA VÆRKTØJ", "AO ordrenummer" 108..., "Bestilt hos", "Leveringsnummer" og "Fragtbrev nr.".
-- "UKENDT": alt andet, eller hvis du er det mindste i tvivl.
+- "BD": Brødrene Dahl (Brødrene Dahl A/S, "BD"). SAP-layout med følgeseddel, faktura eller kreditnota, "Ordrenr." 101..., fakturanr. 111..., kreditnota 300..., "Pos"-kolonne, evt. "Leveres fra et andet lager", og bank-/IBAN-oplysninger nederst.
+- "AO": AO / EA Værktøj med logo "AO EA VÆRKTØJ", feltet "AO ordrenummer" (108...), "Bestilt hos", "Leveringsnummer" og "Fragtbrev nr.".
+- "UKENDT": kun hvis dokumentet tydeligvis hverken er fra Brødrene Dahl eller AO.
 
 Svar kun med ét af ordene: BD, AO eller UKENDT.`,
 };
