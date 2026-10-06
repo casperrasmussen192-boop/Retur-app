@@ -2281,9 +2281,9 @@ function renderReturTable(){
       :`<td class="td-dim">—</td>`;
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
-      <td><input class="note-input" type="text" value="${esc(r.navn)}" title="Ret varenavn hvis AI'en har læst forkert" onchange="updateFelt(${i},'navn',this.value)"/>${r.beskrivelse?`<span class="hidden-search">${esc(r.beskrivelse)}</span>`:''}${flereLevRed?`<span class="max-lbl" style="display:block;margin-top:2px;">${levAf(r)}</span>`:''}</td>
-      <td><input class="note-input" type="text" value="${esc(r.varenr)}" title="Ret varenr. hvis AI'en har læst forkert" onchange="updateFelt(${i},'varenr',this.value)"/></td>
-      <td><div class="retur-qty-cell"><input class="note-input" type="number" min="0" value="${Math.round(r.antal)}" title="Ret antal købt hvis AI'en har læst forkert" onchange="updateFelt(${i},'antal',this.value)" style="width:70px;"/><span class="max-lbl">${r.enhed}</span></div></td>
+      <td style="min-width:170px;"><div style="display:flex;align-items:flex-start;gap:6px;"><div style="flex:1;min-width:0;"><div style="font-weight:500;line-height:1.3;word-break:break-word;">${esc(r.navn)}</div>${r.beskrivelse?`<span class="hidden-search">${esc(r.beskrivelse)}</span>`:''}${flereLevRed?`<span class="max-lbl" style="display:block;margin-top:2px;">${levAf(r)}</span>`:''}</div><button type="button" class="ghost" onclick="redigerVare(${i})" title="Ret navn, varenr. eller antal købt hvis AI'en har læst forkert" style="height:26px;width:26px;padding:0;flex-shrink:0;">✎</button></div></td>
+      <td class="td-mono" style="white-space:nowrap;">${esc(r.varenr)||'—'}</td>
+      <td style="white-space:nowrap;"><span class="td-bold">${Math.round(r.antal)}</span> <span class="max-lbl">${esc(r.enhed)}</span></td>
       ${tidlCell}
       <td><div class="retur-qty-cell"><input type="number" min="0" max="${kanRetur}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(kanRetur)}</span></div></td>
       <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${esc(r.note)}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
@@ -2314,6 +2314,19 @@ function updateQty(i,val){
   gemSession();
 }
 function updateBadge(){const n=returData.filter(r=>r.checked).length;document.getElementById('retur-badge').textContent=`${n} vare${n===1?'':'r'} valgt`;}
+// Ret en varelinje hvis AI'en har læst forkert. Tryk Annuller på et felt for at lade det stå uændret.
+function redigerVare(i){
+  const r=returData[i];
+  if(!r)return;
+  const navn=prompt('Varenavn:',r.navn||'');
+  if(navn!==null&&navn.trim())r.navn=navn.trim();
+  const varenr=prompt('Varenr.:',r.varenr||'');
+  if(varenr!==null)r.varenr=varenr.trim();
+  const antal=prompt('Antal købt i alt:',String(Math.round(r.antal)));
+  if(antal!==null&&antal.trim()!==''&&Number.isFinite(Number(antal)))r.antal=Math.max(0,Number(antal));
+  renderReturTable();
+  gemSession();
+}
 function updateFelt(i,felt,val){
   returData[i][felt]=felt==='antal'?(Number(val)||0):val;
   renderReturTable();
