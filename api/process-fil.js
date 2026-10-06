@@ -6,6 +6,7 @@ import { Redis } from "@upstash/redis";
 import { Receiver } from "@upstash/qstash";
 import { get } from "@vercel/blob";
 import Anthropic from "@anthropic-ai/sdk";
+import { PROFILER, GYLDIGE, GENKENDELSE, tolkGenkendelse, bygPrompt } from "./_leverandorer.js";
 
 export const config = { api: { bodyParser: false } };
 
@@ -55,7 +56,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Ugyldig JSON" });
   }
 
-  const { jobId, firmaId, sagsnummer, model, blobUrl, filnavn } = payload;
+  const { jobId, firmaId, sagsnummer, model, blobUrl, filnavn, leverandor: leverandorValg } = payload;
   if (!jobId || !firmaId || !blobUrl) {
     return res.status(400).json({ error: "Mangler jobId, firmaId eller blobUrl" });
   }
@@ -94,38 +95,34 @@ export default async function handler(req, res) {
 
     const modelNavn = model === "sonnet" ? "claude-sonnet-4-5" : "claude-haiku-4-5-20251001";
 
+    const dokument = { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
+
+    // ── Trin 1: find leverandør (manuelt valg fra brugeren vinder over automatisk genkendelse) ──
+    let leverandør = GYLDIGE.includes((leverandorValg || "").toUpperCase()) ? leverandorValg.toUpperCase() : null;
+    if (!leverandør) {
+      const gk = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 10,
+        temperature: 0,
+        system: GENKENDELSE.system,
+        messages: [{ role: "user", content: [dokument, { type: "text", text: GENKENDELSE.prompt }] }],
+      });
+      leverandør = tolkGenkendelse(gk.content.filter(c => c.type === "text").map(c => c.text).join(""));
+      if (!leverandør) {
+        throw new Error("Kunne ikke genkende leverandøren — vælg leverandør manuelt og prøv igen");
+      }
+    }
+    const profil = PROFILER[leverandør];
+
+    // ── Trin 2: udtræk varelinjer med leverandørens egne regler ──
     const response = await client.messages.create({
       model: modelNavn,
       max_tokens: 8000,
       temperature: 0,
-      system: "Du er en JSON-generator specialiseret i SAP-følgesedler og -fakturaer. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
+      system: profil.system,
       messages: [{
         role: "user",
-        content: [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-          { type: "text", text: `Sagsnummer: ${sagsnummer || "ukendt"}
-Udtrækker ALLE varelinjer fra SAP-dokumentet.
-
-VIGTIGT om dokumentnumre:
-- Ordrenumre er 10-cifrede og starter med 101 (f.eks. 1010xxxxxx eller 1011xxxxxx). Læs dem fra "Ordrenr."-feltet.
-- Kreditnotanumre starter med 300 og står ved "Kreditnota"-overskriften.
-- IGNORER fakturanumre der starter med 111.
-- IGNORER alle tal i bank-/IBAN-oplysninger nederst på siden — de er IKKE ordrenumre.
-
-VIGTIGT om varelinjer:
-- Medtag KUN varelinjer fra hoveddelen — IGNORER alt under "Leveres fra et andet lager".
-- For kreditnotaer skal antal være negativt (f.eks. -3).
-- Brug KUN den første linje af varebeskrivelsen som "navn" — kort og konsistent.
-- Læg eventuelle ekstra beskrivelseslinjer i feltet "beskrivelse". Udelad SCIP-, EAN- og CAS-numre.
-
-VIGTIGT om pos.nr:
-- Pos.nr er et 3-cifret nummer (003, 006, 009...) i en separat "Pos" kolonne.
-- Sæt "pos": null hvis kolonnen ikke er synlig — opfind ALDRIG et pos.nr.
-- Fakturaer har INGEN pos-kolonne. Kun følgesedler har den.
-
-Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<101... eller 300...>","type":"<følgeseddel eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":null,"varenr":"<varenr>","navn":"<første linje>","beskrivelse":"<ekstra linjer eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}` },
-        ],
+        content: [dokument, { type: "text", text: bygPrompt(profil, sagsnummer) }],
       }],
     });
 
@@ -135,6 +132,8 @@ Returner KUN JSON uden markdown:
     const slut = tekst.lastIndexOf("}");
     if (start === -1 || slut === -1) throw new Error("Intet JSON i svaret");
     const data = JSON.parse(tekst.slice(start, slut + 1));
+    // Stempl hver ordre med leverandøren, så frontend kan dele returlisten pr. leverandør
+    for (const o of data.ordrer || []) o.leverandor = leverandør;
 
     // ── Atomare opdateringer: ingen læs-ret-skriv på et fælles objekt ──
     // Gem denne fils resultat som sit eget listeelement (RPUSH er atomisk)

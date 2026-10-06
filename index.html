@@ -773,10 +773,12 @@ tbody tr:hover td { background: var(--surface-2); }
       <input type="number" min="0" id="inst-timepris" class="note-input" style="max-width:160px;" placeholder="700"/>
     </div>
     <div class="card">
-      <div class="card-title"><div class="card-icon">✉</div>E-mail til BD</div>
-      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Bruges som forudfyldt modtager når I trykker "Send retur til BD".</p>
-      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">E-mailadresse</label>
-      <input type="email" id="inst-bdemail" class="note-input" style="max-width:320px;" placeholder="retur@bd.dk"/>
+      <div class="card-title"><div class="card-icon">✉</div>Returmail pr. leverandør</div>
+      <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Bruges som forudfyldt modtager når I trykker "Send retur til …". Kan stå tom — så vælger I modtager i jeres mailprogram.</p>
+      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">BD</label>
+      <input type="email" id="inst-bdemail" class="note-input" style="max-width:320px;margin-bottom:12px;" placeholder="retur@bd.dk"/>
+      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">AO</label>
+      <input type="email" id="inst-aoemail" class="note-input" style="max-width:320px;" placeholder="retur@ao.dk"/>
     </div>
     <div class="btn-row" style="margin-bottom:1rem;">
       <button class="success" onclick="gemIndstillinger()">Gem</button>
@@ -945,6 +947,14 @@ tbody tr:hover td { background: var(--surface-2); }
         Sonnet <span style="color:var(--ink-3);">(præcis, dyrere)</span>
       </label>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+      <span style="font-size:12px;color:var(--ink-3);">Leverandør:</span>
+      <select id="lev-valg" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink-2);" title="Automatisk genkender appen selv leverandøren. Vælg manuelt hvis en fil ikke bliver genkendt.">
+        <option value="">Automatisk (anbefalet)</option>
+        <option value="BD">BD</option>
+        <option value="AO">AO</option>
+      </select>
+    </div>
   </div>
 
   <!-- HURTIG REGISTRERING -->
@@ -967,6 +977,13 @@ tbody tr:hover td { background: var(--surface-2); }
       <div class="field-group" style="flex:1;min-width:80px;margin-bottom:0;">
         <label class="field-label">Enhed</label>
         <input type="text" id="hurtig-enhed" class="note-input" placeholder="stk"/>
+      </div>
+      <div class="field-group" style="flex:1;min-width:90px;margin-bottom:0;">
+        <label class="field-label">Leverandør</label>
+        <select id="hurtig-lev" class="note-input">
+          <option value="BD">BD</option>
+          <option value="AO">AO</option>
+        </select>
       </div>
       <button class="primary" onclick="hurtigRegistrering()" style="height:36px;">Tilføj til retur</button>
     </div>
@@ -1191,6 +1208,7 @@ async function visIndstillinger(){
     if(resp.ok){
       document.getElementById('inst-timepris').value=data.indstillinger.timepris;
       document.getElementById('inst-bdemail').value=data.indstillinger.bdEmail||'';
+      document.getElementById('inst-aoemail').value=data.indstillinger.aoEmail||'';
     }
   }catch(e){}
 }
@@ -1213,12 +1231,13 @@ async function gemIndstillinger(){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},
       body:JSON.stringify({
         timepris:document.getElementById('inst-timepris').value,
-        bdEmail:document.getElementById('inst-bdemail').value
+        bdEmail:document.getElementById('inst-bdemail').value,
+        aoEmail:document.getElementById('inst-aoemail').value
       })
     });
     const data=await resp.json();
     if(!resp.ok)throw new Error(data.error||'Kunne ikke gemme');
-    window._bdEmail=data.indstillinger.bdEmail||'';
+    window._levEmails={BD:data.indstillinger.bdEmail||'',AO:data.indstillinger.aoEmail||''};
     statusEl.style.color='var(--green)';
     statusEl.textContent='Gemt ✓';
     setTimeout(()=>statusEl.textContent='',2000);
@@ -1317,7 +1336,7 @@ async function hentDashboard(){
           const dato=new Date(h.ts).toLocaleDateString('da-DK');
           const tid=new Date(h.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
           const dotColor=h.type==='retur'?'var(--amber)':h.type==='sendt'?'var(--green)':'var(--accent)';
-          const badge=h.type==='retur'?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':h.type==='sendt'?'<span class="badge b-green">Sendt til BD</span>':'<span class="badge b-blue">Analyse</span>';
+          const badge=h.type==='retur'?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':h.type==='sendt'?'<span class="badge b-green">Sendt</span>':'<span class="badge b-blue">Analyse</span>';
           return `<div class="tl-item">
             <div style="position:relative;flex-shrink:0;"><div class="tl-dot" style="background:${dotColor}"></div><div class="tl-vline"></div></div>
             <div style="flex:1;padding-bottom:14px;">
@@ -1619,7 +1638,7 @@ async function hentHistorik(){
       const dato=new Date(h.ts).toLocaleDateString('da-DK');
       const tid=new Date(h.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
       const dotColor=h.type==='retur'?'var(--amber)':h.type==='sendt'?'var(--green)':'var(--accent)';
-      const badge=h.type==='retur'?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':h.type==='sendt'?'<span class="badge b-green">Sendt til BD</span>':'<span class="badge b-blue">Analyse</span>';
+      const badge=h.type==='retur'?'<span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Retur</span>':h.type==='sendt'?'<span class="badge b-green">Sendt</span>':'<span class="badge b-blue">Analyse</span>';
       const varighedTxt=formatVarighed(h.varighedSek);
       const linjerHtml=(h.linjer||[]).map(l=>`<div style="font-size:12px;color:var(--ink-3);">· ${l.navn} — ${Math.round(l.antal)} ${l.enhed}</div>`).join('');
       return `<div class="tl-item">
@@ -1897,7 +1916,7 @@ async function go(){
     const startResp = await fetch('/api/queue-analyse', {
       method: 'POST',
       headers: {'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body: JSON.stringify({ jobId, sagsnummer: caseNum, filer, model })
+      body: JSON.stringify({ jobId, sagsnummer: caseNum, filer, model, leverandor: document.getElementById('lev-valg')?.value||'' })
     });
     if(!startResp.ok){
       const e = await startResp.json().catch(()=>({}));
@@ -1958,7 +1977,7 @@ function visFejlBanner(){
   errEl.style.borderColor='#fde68a';
   errEl.style.color='#92400e';
   errEl.innerHTML=`⚠ ${fejledeAktuelle.length} fil${fejledeAktuelle.length>1?'er':''} kunne ikke læses og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeAktuelle.join('<br>')}</span><br><br>
-    Tjek disse filer, eller upload erstatningsfiler for kun de fejlede — resten af analysen køres ikke igen:<br><br>
+    Tjek disse filer, eller upload erstatningsfiler for kun de fejlede — resten af analysen køres ikke igen. Blev leverandøren ikke genkendt, så vælg den under "Leverandør" ovenfor først:<br><br>
     <button type="button" onclick="document.getElementById('retry-file-input').click()">📎 Vælg erstatningsfiler og prøv igen</button>
     <input type="file" id="retry-file-input" accept="application/pdf" multiple style="display:none" onchange="retryFejledeFiler(this.files)"/>
     <span id="retry-status" style="margin-left:8px;font-size:12px;"></span>`;
@@ -1998,7 +2017,7 @@ async function retryFejledeFiler(fileList){
     const startResp=await fetch('/api/queue-analyse',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ jobId, sagsnummer:caseNum, filer, model:document.querySelector('input[name=model]:checked')?.value||'haiku' })
+      body:JSON.stringify({ jobId, sagsnummer:caseNum, filer, model:document.querySelector('input[name=model]:checked')?.value||'haiku', leverandor:document.getElementById('lev-valg')?.value||'' })
     });
     if(!startResp.ok){const e=await startResp.json().catch(()=>({}));throw new Error(e.error||`HTTP ${startResp.status}`);}
     const job=await pollJobStatus(jobId,apiKey,(j)=>{if(statusEl)statusEl.textContent=`Analyserer... ${(j.færdige||0)+(j.fejlede?.length||0)}/${j.antalFiler}`;});
@@ -2021,6 +2040,16 @@ async function retryFejledeFiler(fileList){
   }
 }
 
+// ── Leverandører ──
+// Ordrer uden leverandør-felt (gemt før AO blev tilføjet) er altid BD.
+const LEVERANDORER=['BD','AO'];
+function levAf(x){return (x&&x.leverandor)||'BD';}
+// Ordrebekræftelser er kun varsler om hvad der er bestilt — ikke leveret — så de tæller ikke med som "købt".
+function tællerMed(ord){return ord.type!=='ordrebekræftelse';}
+// HTML-escape til værdier i attributter og tekst (AO-varenavne indeholder fx tommetegn ")
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function manuelOrdrenr(lev){return lev==='BD'?'MANUEL':'MANUEL-'+lev;}
+
 // ── Totals & render ──
 function matchWords(text,term){if(!term)return true;return term.split(/\s+/).filter(Boolean).every(w=>text.includes(w));}
 
@@ -2031,25 +2060,28 @@ function normNavn(s){return (s||'').toLowerCase().trim().replace(/\s+/g,' ');}
 // analyserede ordrer, matchet på tolerant varenavn — bruges når man analyserer filer
 // EFTER man allerede har hurtig-registreret noget, så det ikke ender som to linjer.
 function slaaManueltSammen(nyeOrdrer){
-  const manuelOrd=(parsed&&parsed.ordrer||[]).find(o=>o.ordrenr==='MANUEL');
-  if(!manuelOrd||!manuelOrd.linjer||!manuelOrd.linjer.length)return nyeOrdrer;
-  const tilbageværende=[];
-  for(const ml of manuelOrd.linjer){
-    const mk=normNavn(ml.navn);
-    let fundet=false;
-    for(const ord of nyeOrdrer){
-      for(const l of ord.linjer||[]){
-        if(normNavn(l.navn)===mk){
-          l.antal=(Number(l.antal)||0)+(Number(ml.antal)||0);
-          fundet=true;
-          break;
+  const manuelleOrd=(parsed&&parsed.ordrer||[]).filter(o=>String(o.ordrenr).startsWith('MANUEL'));
+  for(const manuelOrd of manuelleOrd){
+    if(!manuelOrd.linjer||!manuelOrd.linjer.length)continue;
+    const tilbageværende=[];
+    for(const ml of manuelOrd.linjer){
+      const mk=normNavn(ml.navn);
+      let fundet=false;
+      for(const ord of nyeOrdrer){
+        if(!tællerMed(ord))continue;
+        for(const l of ord.linjer||[]){
+          if(normNavn(l.navn)===mk){
+            l.antal=(Number(l.antal)||0)+(Number(ml.antal)||0);
+            fundet=true;
+            break;
+          }
         }
+        if(fundet)break;
       }
-      if(fundet)break;
+      if(!fundet)tilbageværende.push(ml);
     }
-    if(!fundet)tilbageværende.push(ml);
+    if(tilbageværende.length)nyeOrdrer.push({...manuelOrd,linjer:tilbageværende});
   }
-  if(tilbageværende.length)nyeOrdrer.push({...manuelOrd,linjer:tilbageværende});
   return nyeOrdrer;
 }
 
@@ -2065,9 +2097,11 @@ function hurtigRegistrering(){
   if(!antal||antal<=0){alert('Angiv et antal større end 0.');return;}
 
   if(!parsed)parsed={ordrer:[]};
+  const lev=document.getElementById('hurtig-lev')?.value||'BD';
   const maalNavn=normNavn(navn);
   let fundet=null;
   for(const ord of parsed.ordrer){
+    if(!tællerMed(ord))continue;
     for(const l of ord.linjer||[]){
       if(normNavn(l.navn)===maalNavn){fundet=l;break;}
     }
@@ -2076,11 +2110,11 @@ function hurtigRegistrering(){
   if(fundet){
     fundet.antal=(Number(fundet.antal)||0)+antal;
   }else{
-    let manuelOrd=parsed.ordrer.find(o=>o.ordrenr==='MANUEL');
+    let manuelOrd=parsed.ordrer.find(o=>o.ordrenr===manuelOrdrenr(lev));
     if(!manuelOrd){
       const idag=new Date();
       const datoStr=`${String(idag.getDate()).padStart(2,'0')}-${String(idag.getMonth()+1).padStart(2,'0')}-${String(idag.getFullYear()).slice(-2)}`;
-      manuelOrd={ordrenr:'MANUEL',type:'manuel',dato:datoStr,linjer:[]};
+      manuelOrd={ordrenr:manuelOrdrenr(lev),type:'manuel',leverandor:lev,dato:datoStr,linjer:[]};
       parsed.ordrer.push(manuelOrd);
     }
     manuelOrd.linjer.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed});
@@ -2094,7 +2128,7 @@ function hurtigRegistrering(){
     row.returAntal=(Number(row.returAntal)||0)+antal;
     row.checked=true;
   }else{
-    returData.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed,returAntal:antal,checked:true,note:'Manuelt registreret'});
+    returData.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed,leverandor:lev,returAntal:antal,checked:true,note:'Manuelt registreret'});
   }
 
   navnInput.value='';antalInput.value='';enhedInput.value='';
@@ -2120,15 +2154,17 @@ function getTotals(){
   if(!parsed)return{};
   const t={};
   const order=[]; // Bevarer rækkefølgen fra PDF'en
-  for(const ord of parsed.ordrer||[])
+  for(const ord of parsed.ordrer||[]){
+    if(!tællerMed(ord))continue;
     for(const l of ord.linjer||[]){
       const k=l.varenr||l.navn||'?';
       if(!t[k]){
-        t[k]={navn:l.navn||k,varenr:l.varenr||'',beskrivelse:l.beskrivelse||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||''};
+        t[k]={navn:l.navn||k,varenr:l.varenr||'',beskrivelse:l.beskrivelse||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||'',leverandor:levAf(ord)};
         order.push(k);
       }
       t[k].antal+=Number(l.antal)||0;
     }
+  }
   // Returner som objekt men med keys i original rækkefølge
   const result={};
   order.forEach(k=>result[k]=t[k]);
@@ -2148,6 +2184,10 @@ function renderResults(caseNum){
     :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
   renderPrOrdre();
   opdaterHurtigNavnListe(ks.map(k=>t[k].navn));
+  // Forvælg leverandør i Hurtig registrering hvis sagen kun handler om én leverandør
+  const levSæt=[...new Set((parsed.ordrer||[]).filter(tællerMed).map(levAf))];
+  const hl=document.getElementById('hurtig-lev');
+  if(hl&&levSæt.length===1)hl.value=levSæt[0];
 }
 
 // Foreslår kendte varenavne fra sagen når man skriver i "Hurtig registrering" —
@@ -2165,7 +2205,15 @@ function renderPrOrdre(){
   const returPrOrdre={};
   for(const ord of fordeling){returPrOrdre[ord.ordrenr]={};for(const l of ord.linjer){const k=l.varenr||l.navn||'?';returPrOrdre[ord.ordrenr][k]=(returPrOrdre[ord.ordrenr][k]||0)+l.returAntal;}}
   const harRetur=returData.some(r=>r.checked&&r.returAntal>0);
+  const flereLev=new Set((parsed.ordrer||[]).map(levAf)).size>1;
   document.getElementById('d-content').innerHTML=(parsed.ordrer||[]).map(ord=>{
+    const levBadge=flereLev?`<span class="badge b-blue" style="margin-left:8px;">${levAf(ord)}</span>`:'';
+    if(!tællerMed(ord)){
+      const bRows=[...(ord.linjer||[])].sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999)).map(l=>`<tr><td class="td-pos">${esc(l.pos)||'—'}</td><td>${esc(l.navn)||'—'}</td><td class="td-mono">${esc(l.varenr)||'—'}</td><td class="td-bold">${Math.round(l.antal)}</td><td class="td-mono">${esc(l.enhed)||'stk'}</td></tr>`).join('');
+      return `<div class="ord-block"><div class="ord-title">${esc(ord.ordrenr)||'Ukendt'}${ord.dato?' — '+esc(ord.dato):''}<span class="badge" style="margin-left:8px;background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Ordrebekræftelse</span>${levBadge}</div>
+      <p style="font-size:12px;color:var(--ink-3);margin:4px 0 8px;">Kun en bekræftelse på hvad der er bestilt — ikke leveret endnu, så varerne tæller ikke med som købt og kan ikke lægges retur herfra.</p>
+      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Bestilt</th><th>Enhed</th></tr></thead><tbody>${bRows}</tbody></table></div>`;
+    }
     const rMap=returPrOrdre[ord.ordrenr]||{};
     const linjer=[...(ord.linjer||[])].sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999));
     const ordRetur=Object.values(rMap).reduce((s,v)=>s+v,0);
@@ -2177,7 +2225,7 @@ function renderPrOrdre(){
     }).join('');
     const thRetur=harRetur?'<th style="color:var(--green)">Retur</th><th>Tilbage</th>':'';
     const badge=harRetur&&ordRetur>0?`<span class="ordre-badge" style="margin-left:8px;">${Math.round(ordRetur)} retur</span>`:'';
-    return `<div class="ord-block"><div class="ord-title">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}</div>
+    return `<div class="ord-block"><div class="ord-title">${ord.ordrenr||'Ukendt'}${ord.dato?' — '+ord.dato:''}${badge}${levBadge}</div>
       <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Købt</th>${thRetur}<th>Enhed</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join('');
 }
@@ -2221,6 +2269,7 @@ function renderReturTable(){
   const countEl=document.getElementById('soeg-count');
   const synlige=returData.filter(r=>!soegTerm||matchWords((r.navn+' '+r.varenr+' '+(r.beskrivelse||'')).toLowerCase(),soegTerm));
   if(countEl)countEl.textContent=soegTerm?`${synlige.length} af ${returData.length} varer`:'';
+  const flereLevRed=new Set(returData.map(levAf)).size>1;
   document.getElementById('retur-tbody').innerHTML=returData.map((r,i)=>{
     const vis=!soegTerm||matchWords((r.navn+' '+r.varenr+' '+(r.beskrivelse||'')).toLowerCase(),soegTerm);
     if(!vis)return`<tr style="display:none" id="rrow-${i}"></tr>`;
@@ -2232,12 +2281,12 @@ function renderReturTable(){
       :`<td class="td-dim">—</td>`;
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
-      <td><input class="note-input" type="text" value="${r.navn}" title="Ret varenavn hvis AI'en har læst forkert" onchange="updateFelt(${i},'navn',this.value)"/>${r.beskrivelse?`<span class="hidden-search">${r.beskrivelse}</span>`:''}</td>
-      <td><input class="note-input" type="text" value="${r.varenr||''}" title="Ret varenr. hvis AI'en har læst forkert" onchange="updateFelt(${i},'varenr',this.value)"/></td>
+      <td><input class="note-input" type="text" value="${esc(r.navn)}" title="Ret varenavn hvis AI'en har læst forkert" onchange="updateFelt(${i},'navn',this.value)"/>${r.beskrivelse?`<span class="hidden-search">${esc(r.beskrivelse)}</span>`:''}${flereLevRed?`<span class="max-lbl" style="display:block;margin-top:2px;">${levAf(r)}</span>`:''}</td>
+      <td><input class="note-input" type="text" value="${esc(r.varenr)}" title="Ret varenr. hvis AI'en har læst forkert" onchange="updateFelt(${i},'varenr',this.value)"/></td>
       <td><div class="retur-qty-cell"><input class="note-input" type="number" min="0" value="${Math.round(r.antal)}" title="Ret antal købt hvis AI'en har læst forkert" onchange="updateFelt(${i},'antal',this.value)" style="width:70px;"/><span class="max-lbl">${r.enhed}</span></div></td>
       ${tidlCell}
       <td><div class="retur-qty-cell"><input type="number" min="0" max="${kanRetur}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(kanRetur)}</span></div></td>
-      <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${r.note}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
+      <td><input class="note-input" type="text" placeholder="Valgfri note..." value="${esc(r.note)}" onchange="returData[${i}].note=this.value;gemSession()"/></td>
       <td><button type="button" class="ghost" onclick="sletVare(${i})" title="Slet varen helt fra listen" style="height:28px;width:28px;padding:0;color:var(--red);">🗑</button></td>
     </tr>`;
   }).join('');
@@ -2293,9 +2342,16 @@ function sletVare(i){
 }
 
 // ── Fordeling ──
-function beregnFordeling(){
-  const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
-  const ordrer=[...(parsed.ordrer||[])].sort((a,b)=>{
+// Uden argument: alle leverandørers fordeling lagt sammen. Med argument (fx 'AO'): kun den leverandørs
+// varer fordelt på kun den leverandørs ordrer — en AO-vare må aldrig havne på en BD-ordre.
+function beregnFordeling(lev){
+  if(lev)return beregnFordelingFor(lev);
+  const levs=[...new Set([...returData.filter(r=>r.checked&&r.returAntal>0).map(levAf),...(parsed.ordrer||[]).filter(tællerMed).map(levAf)])];
+  return levs.flatMap(l=>beregnFordelingFor(l));
+}
+function beregnFordelingFor(lev){
+  const valgte=returData.filter(r=>r.checked&&r.returAntal>0&&levAf(r)===lev);
+  const ordrer=[...(parsed.ordrer||[])].filter(o=>tællerMed(o)&&levAf(o)===lev).sort((a,b)=>{
     const pd=s=>{if(!s)return 0;const p=s.split('-');if(p.length===3){const[d,m,y]=p;return new Date(`20${y}`,m-1,d);}return 0;};
     return pd(b.dato)-pd(a.dato); // Nyeste først
   });
@@ -2313,7 +2369,7 @@ function beregnFordeling(){
     }
   }
   const fordeling={};
-  for(const ord of ordrer)fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',linjer:[]};
+  for(const ord of ordrer)fordeling[ord.ordrenr]={ordrenr:ord.ordrenr,dato:ord.dato||'',leverandor:lev,linjer:[]};
   for(const r of valgte){
     const k=nk(r.varenr)||nk(r.navn)||'?';
     const pos=posMap[k]||r.pos||'';
@@ -2335,31 +2391,46 @@ function beregnFordeling(){
   return Object.values(fordeling);
 }
 
+// Hvilke leverandører har varer i returlisten (i fast rækkefølge)
+function returLeverandorer(valgte){
+  const s=new Set(valgte.map(levAf));
+  const kendte=LEVERANDORER.filter(l=>s.has(l));
+  return [...kendte,...[...s].filter(l=>!kendte.includes(l))];
+}
+
 function genererRetur(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
   if(!valgte.length){alert('Angiv antal retur for mindst én vare.');return;}
   const caseNum=document.getElementById('case-num').value||'ukendt';
-  const fordeling=beregnFordeling();
   const totalRetur=valgte.reduce((s,r)=>s+r.returAntal,0);
-  const ons=(parsed?.ordrer||[]).map(o=>o.ordrenr).filter(n=>n).join(', ');
+  // Én returliste pr. leverandør — en retur til AO skal aldrig stå på en liste til BD
+  const levs=returLeverandorer(valgte);
+  const flereLev=levs.length>1;
+  const sendKnapper=levs.map(l=>`<button onclick="sendRetur('${l}')">✉ Send retur til ${l}</button>`).join('');
   let html=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
-    <div><div style="font-size:13px;color:var(--ink-2);margin-bottom:2px;">Sag: <strong style="color:var(--ink)">${caseNum}</strong></div><div style="font-size:12px;color:var(--ink-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button><button onclick="sendRetur()">✉ Send retur til BD</button></div>
+    <div><div style="font-size:13px;color:var(--ink-2);margin-bottom:2px;">Sag: <strong style="color:var(--ink)">${esc(caseNum)}</strong></div><div style="font-size:12px;color:var(--ink-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button>${sendKnapper}</div>
   </div>`;
-  html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:8px;">Samlet returliste</div>
-  <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
-    ${valgte.map(r=>`<tr><td>${r.navn}</td><td class="td-mono">${r.varenr||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${r.enhed}</td><td class="td-dim">${r.note||'—'}</td></tr>`).join('')}
-  </tbody></table>
-  <div class="sum-footer"><span>I alt: ${Math.round(totalRetur)} enheder retur</span><span>Fordelt på ${valgte.length} varelinjer</span></div>`;
-  html+=`<div class="fordeling-wrapper"><div class="fordeling-title">Fordeling pr. ordre</div><div class="fordeling-subtitle">Retur fordelt fra nyeste ordre først.</div>`;
-  for(const ord of fordeling){
-    const ordTotal=ord.linjer.reduce((s,l)=>s+l.returAntal,0);
-    html+=`<div class="ordre-card"><div class="ordre-card-header"><div style="display:flex;align-items:center;gap:10px;"><span class="ordre-nr">${ord.ordrenr}</span>${ord.dato?`<span class="ordre-dato">${ord.dato}</span>`:''}</div>${ordTotal>0?`<span class="ordre-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--ink-3);">Ingen retur</span>'}</div>`;
-    if(ord.linjer.length){html+=`<table class="ordre-table"><tbody>${ord.linjer.map(l=>`<tr><td class="td-pos" style="width:44px;">${l.pos||'—'}</td><td>${l.navn}</td><td class="td-mono">${l.varenr||'—'}</td><td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${l.enhed}</td><td class="td-dim">${l.note||''}</td></tr>`).join('')}</tbody></table>`;}
-    else{html+=`<div class="ingen-retur">Ingen varer trækkes retur på denne ordre</div>`;}
+  for(const lev of levs){
+    const levValgte=valgte.filter(r=>levAf(r)===lev);
+    const levTotal=levValgte.reduce((s,r)=>s+r.returAntal,0);
+    const fordeling=beregnFordeling(lev);
+    if(flereLev)html+=`<div style="font-size:15px;font-weight:600;color:var(--ink);margin:1.5rem 0 .75rem;padding-bottom:6px;border-bottom:2px solid var(--border-strong);">Retur til ${lev}</div>`;
+    html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:8px;">Samlet returliste</div>
+    <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
+      ${levValgte.map(r=>`<tr><td>${esc(r.navn)}</td><td class="td-mono">${esc(r.varenr)||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${esc(r.enhed)}</td><td class="td-dim">${esc(r.note)||'—'}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="sum-footer"><span>I alt: ${Math.round(levTotal)} enheder retur</span><span>Fordelt på ${levValgte.length} varelinjer</span></div>`;
+    html+=`<div class="fordeling-wrapper"><div class="fordeling-title">Fordeling pr. ordre</div><div class="fordeling-subtitle">Retur fordelt fra nyeste ordre først.</div>`;
+    for(const ord of fordeling){
+      const ordTotal=ord.linjer.reduce((s,l)=>s+l.returAntal,0);
+      html+=`<div class="ordre-card"><div class="ordre-card-header"><div style="display:flex;align-items:center;gap:10px;"><span class="ordre-nr">${esc(ord.ordrenr)}</span>${ord.dato?`<span class="ordre-dato">${esc(ord.dato)}</span>`:''}</div>${ordTotal>0?`<span class="ordre-badge">${Math.round(ordTotal)} enheder retur</span>`:'<span style="font-size:11px;color:var(--ink-3);">Ingen retur</span>'}</div>`;
+      if(ord.linjer.length){html+=`<table class="ordre-table"><tbody>${ord.linjer.map(l=>`<tr><td class="td-pos" style="width:44px;">${esc(l.pos)||'—'}</td><td>${esc(l.navn)}</td><td class="td-mono">${esc(l.varenr)||'—'}</td><td class="td-green" style="white-space:nowrap;">${Math.round(l.returAntal)} ${esc(l.enhed)}</td><td class="td-dim">${esc(l.note)}</td></tr>`).join('')}</tbody></table>`;}
+      else{html+=`<div class="ingen-retur">Ingen varer trækkes retur på denne ordre</div>`;}
+      html+=`</div>`;
+    }
     html+=`</div>`;
   }
-  html+=`</div>`;
   document.getElementById('r-content').innerHTML=html;
   document.getElementById('retur-editor').style.display='none';
   document.getElementById('results').style.display='';
@@ -2390,18 +2461,26 @@ function genererRetur(){
   };
 }
 
-function byggReturTekst(){
+// Med lev (fx 'AO'): kun den leverandørs returliste. Uden: alle, ét afsnit pr. leverandør.
+function byggReturTekst(lev){
   let valgte=returData.filter(r=>r.checked&&r.returAntal>0);
   if(!valgte.length&&window._returSnapshot?.length){
     returData=window._returSnapshot;
     valgte=returData;
   }
+  if(lev)valgte=valgte.filter(r=>levAf(r)===lev);
   const cn=document.getElementById('case-num').value;
-  const fordeling=beregnFordeling();
-  let s=`RETURLISTE — Sag: ${cn}\nDato: ${new Date().toLocaleDateString('da-DK')}\n\nSAMLET:\n`;
-  valgte.forEach(r=>{s+=`  ${r.navn} (${r.varenr}): ${Math.round(r.returAntal)} ${r.enhed}`;if(r.note)s+=` — ${r.note}`;s+='\n';});
-  s+=`\nFORDELING PR. ORDRE:\n`;
-  fordeling.forEach(ord=>{if(!ord.linjer.length)return;s+=`\n${ord.ordrenr}${ord.dato?' ('+ord.dato+')':''}:\n`;ord.linjer.forEach(l=>{s+=`  [${l.pos||'—'}] ${l.navn} (${l.varenr}): ${Math.round(l.returAntal)} ${l.enhed}`;if(l.note)s+=` — ${l.note}`;s+='\n';});});
+  const levs=lev?[lev]:returLeverandorer(valgte);
+  let s=`RETURLISTE — Sag: ${cn}\nDato: ${new Date().toLocaleDateString('da-DK')}\n`;
+  for(const l of levs){
+    const levValgte=valgte.filter(r=>levAf(r)===l);
+    const fordeling=beregnFordeling(l);
+    if(levs.length>1)s+=`\n===== RETUR TIL ${l} =====\n`;
+    s+=`\nSAMLET:\n`;
+    levValgte.forEach(r=>{s+=`  ${r.navn} (${r.varenr}): ${Math.round(r.returAntal)} ${r.enhed}`;if(r.note)s+=` — ${r.note}`;s+='\n';});
+    s+=`\nFORDELING PR. ORDRE:\n`;
+    fordeling.forEach(ord=>{if(!ord.linjer.length)return;s+=`\n${ord.ordrenr}${ord.dato?' ('+ord.dato+')':''}:\n`;ord.linjer.forEach(x=>{s+=`  [${x.pos||'—'}] ${x.navn} (${x.varenr}): ${Math.round(x.returAntal)} ${x.enhed}`;if(x.note)s+=` — ${x.note}`;s+='\n';});});
+  }
   return {cn,valgte,s};
 }
 
@@ -2410,27 +2489,27 @@ function copyRetur(){
   navigator.clipboard.writeText(s).then(()=>{const b=event.target;const o=b.textContent;b.textContent='Kopieret ✓';setTimeout(()=>b.textContent=o,2000);});
 }
 
-async function sendRetur(){
-  const {cn,valgte,s}=byggReturTekst();
-  if(!valgte.length){alert('Ingen varer valgt til retur.');return;}
-  let bdEmail=window._bdEmail;
-  if(bdEmail===undefined){
+async function sendRetur(lev){
+  lev=lev||'BD';
+  const {cn,valgte,s}=byggReturTekst(lev);
+  if(!valgte.length){alert('Ingen varer valgt til retur til '+lev+'.');return;}
+  if(window._levEmails===undefined){
     try{
       const resp=await fetch('/api/indstillinger',{headers:{'Authorization':'Bearer '+getApiKey()}});
       const data=await resp.json();
-      bdEmail=resp.ok?(data.indstillinger.bdEmail||''):'';
-    }catch(e){bdEmail='';}
-    window._bdEmail=bdEmail;
+      window._levEmails=resp.ok?{BD:data.indstillinger.bdEmail||'',AO:data.indstillinger.aoEmail||''}:{};
+    }catch(e){window._levEmails={};}
   }
+  const modtager=window._levEmails[lev]||'';
   const subject='Returliste — Sag '+cn;
   let body=s;
   const FOR_LANG=1800; // mailto har en praktisk grænse på tværs af mailklienter
   if(body.length>FOR_LANG){
     body=body.slice(0,FOR_LANG)+'\n\n[... listen er for lang til e-mail-udkastet — brug "Kopier" i stedet og indsæt hele listen manuelt ...]';
   }
-  window.location.href=`mailto:${encodeURIComponent(bdEmail||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href=`mailto:${encodeURIComponent(modtager)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   const totalRetur=valgte.reduce((sum,r)=>sum+r.returAntal,0);
-  logHistorik('sendt','Returliste sendt til BD',valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})),Math.round(totalRetur));
+  logHistorik('sendt','Returliste sendt til '+lev,valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})),Math.round(totalRetur));
 }
 
 function printRetur(){
@@ -2450,25 +2529,34 @@ function printRetur(){
   }
   const {valgte, fordeling, caseNum, dato, ordreNr} = pd;
   const cn = caseNum;
-  const totalAntal = valgte.reduce((s,r)=>s+r.returAntal,0);
-  const samletRows = valgte.map((r,i)=>`<tr class="${i%2===0?'even':'odd'}"><td>${r.navn}</td><td class="mono">${r.varenr||'—'}</td><td class="antal">${Math.round(r.returAntal)}</td><td class="mono">${r.enhed}</td><td>${r.note||''}</td></tr>`).join('');
-  let ordreHtml='';
-  fordeling.forEach(ord=>{
-    if(!ord.linjer.length)return;
-    ordreHtml+=`<div class="ordre-header">${ord.ordrenr}${ord.dato?' &nbsp;·&nbsp; '+ord.dato:''}</div>
-    <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
-    ${ord.linjer.map((l,i)=>`<tr class="${i%2===0?'even':'odd'}"><td class="mono" style="color:#9e9890">${l.pos||'—'}</td><td>${l.navn}</td><td class="mono">${l.varenr||'—'}</td><td class="antal green">${Math.round(l.returAntal)}</td><td class="mono">${l.enhed}</td><td>${l.note||''}</td></tr>`).join('')}
-    </tbody></table>`;
-  });
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"/><title>Returliste ${cn}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;font-size:12px;color:#1a1815;background:#fff;padding:2.5rem;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #1a1815;}.logo{font-size:18px;font-weight:500;background:#1a1815;color:#fff;padding:6px 14px;border-radius:6px;}.header-right h1{font-size:20px;font-weight:500;margin-bottom:4px;}.header-right p{font-size:11px;color:#6b6560;}.meta{display:flex;gap:2rem;margin-bottom:1.5rem;padding:12px 16px;background:#f5f3ef;border-radius:8px;flex-wrap:wrap;}.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9e9890;margin-bottom:2px;}.meta-value{font-size:13px;font-weight:500;}.summary-box{display:flex;gap:1rem;margin-bottom:1.5rem;}.stat{flex:1;border:1px solid #e2ddd8;border-radius:8px;padding:10px 14px;}.stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9e9890;margin-bottom:2px;}.stat-v{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;}.stat-v.green{color:#1a7a3c;}.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b6560;margin-bottom:8px;margin-top:1.5rem;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem;}th{text-align:left;padding:6px 8px;background:#f5f3ef;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;border-bottom:1px solid #e2ddd8;}td{padding:6px 8px;border-bottom:1px solid #e2ddd8;}tr.even td{background:#fff;}tr.odd td{background:#faf9f7;}.mono{font-family:'DM Mono',monospace;font-size:11px;color:#6b6560;}.antal{font-weight:500;text-align:right;}.antal.green{color:#1a7a3c;}.divider{border:none;border-top:2px solid #e2ddd8;margin:1.5rem 0;}.ordre-header{font-size:11px;font-weight:500;background:#eef2fd;color:#1a4fd6;padding:6px 10px;border-radius:6px;margin-bottom:6px;margin-top:1rem;font-family:'DM Mono',monospace;}.footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2ddd8;font-size:10px;color:#9e9890;display:flex;justify-content:space-between;}.total-row td{font-weight:500;border-top:2px solid #1a1815;background:#f5f3ef!important;}@media print{body{padding:1.5rem;}@page{margin:1.5cm;size:A4;}}</style></head><body>
-  <div class="header"><div class="logo">Rt</div><div class="header-right"><h1>Returliste</h1><p>Retura &nbsp;·&nbsp; ${dato}</p></div></div>
-  <div class="meta"><div><div class="meta-label">Sagsnummer</div><div class="meta-value">${cn}</div></div><div><div class="meta-label">Ordrer</div><div class="meta-value">${ordreNr||'—'}</div></div><div><div class="meta-label">Dato</div><div class="meta-value">${dato}</div></div></div>
-  <div class="summary-box"><div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${valgte.length}</div></div><div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div></div>
+  // Én sektion (egen side) pr. leverandør, så hver kan udskrives/sendes for sig
+  const printLevs=returLeverandorer(valgte);
+  const sektioner=printLevs.map((lev,idx)=>{
+    const levValgte=valgte.filter(r=>levAf(r)===lev);
+    const levFordeling=fordeling.filter(o=>levAf(o)===lev);
+    const totalAntal = levValgte.reduce((s,r)=>s+r.returAntal,0);
+    const samletRows = levValgte.map((r,i)=>`<tr class="${i%2===0?'even':'odd'}"><td>${esc(r.navn)}</td><td class="mono">${esc(r.varenr)||'—'}</td><td class="antal">${Math.round(r.returAntal)}</td><td class="mono">${esc(r.enhed)}</td><td>${esc(r.note)}</td></tr>`).join('');
+    let ordreHtml='';
+    levFordeling.forEach(ord=>{
+      if(!ord.linjer.length)return;
+      ordreHtml+=`<div class="ordre-header">${esc(ord.ordrenr)}${ord.dato?' &nbsp;·&nbsp; '+esc(ord.dato):''}</div>
+      <table><thead><tr><th>Pos</th><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
+      ${ord.linjer.map((l,i)=>`<tr class="${i%2===0?'even':'odd'}"><td class="mono" style="color:#9e9890">${esc(l.pos)||'—'}</td><td>${esc(l.navn)}</td><td class="mono">${esc(l.varenr)||'—'}</td><td class="antal green">${Math.round(l.returAntal)}</td><td class="mono">${esc(l.enhed)}</td><td>${esc(l.note)}</td></tr>`).join('')}
+      </tbody></table>`;
+    });
+    return `<div class="${idx>0?'lev-sektion':''}">
+  ${printLevs.length>1?`<div class="lev-titel">Retur til ${lev}</div>`:''}
+  <div class="summary-box"><div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${levValgte.length}</div></div><div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div></div>
   <div class="section-title">Samlet returliste</div>
   <table><thead><tr><th>Materiale</th><th>Varenr.</th><th style="text-align:right">Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>${samletRows}<tr class="total-row"><td colspan="2"><strong>I alt</strong></td><td class="antal"><strong>${Math.round(totalAntal)}</strong></td><td colspan="2"></td></tr></tbody></table>
   <div class="divider"></div>
-  <div class="section-title">Fordeling pr. ordre</div>${ordreHtml}
+  <div class="section-title">Fordeling pr. ordre</div>${ordreHtml}</div>`;
+  }).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"/><title>Returliste ${cn}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;font-size:12px;color:#1a1815;background:#fff;padding:2.5rem;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #1a1815;}.logo{font-size:18px;font-weight:500;background:#1a1815;color:#fff;padding:6px 14px;border-radius:6px;}.header-right h1{font-size:20px;font-weight:500;margin-bottom:4px;}.header-right p{font-size:11px;color:#6b6560;}.meta{display:flex;gap:2rem;margin-bottom:1.5rem;padding:12px 16px;background:#f5f3ef;border-radius:8px;flex-wrap:wrap;}.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9e9890;margin-bottom:2px;}.meta-value{font-size:13px;font-weight:500;}.summary-box{display:flex;gap:1rem;margin-bottom:1.5rem;}.stat{flex:1;border:1px solid #e2ddd8;border-radius:8px;padding:10px 14px;}.stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9e9890;margin-bottom:2px;}.stat-v{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;}.stat-v.green{color:#1a7a3c;}.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b6560;margin-bottom:8px;margin-top:1.5rem;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem;}th{text-align:left;padding:6px 8px;background:#f5f3ef;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b6560;border-bottom:1px solid #e2ddd8;}td{padding:6px 8px;border-bottom:1px solid #e2ddd8;}tr.even td{background:#fff;}tr.odd td{background:#faf9f7;}.mono{font-family:'DM Mono',monospace;font-size:11px;color:#6b6560;}.antal{font-weight:500;text-align:right;}.antal.green{color:#1a7a3c;}.divider{border:none;border-top:2px solid #e2ddd8;margin:1.5rem 0;}.ordre-header{font-size:11px;font-weight:500;background:#eef2fd;color:#1a4fd6;padding:6px 10px;border-radius:6px;margin-bottom:6px;margin-top:1rem;font-family:'DM Mono',monospace;}.footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2ddd8;font-size:10px;color:#9e9890;display:flex;justify-content:space-between;}.total-row td{font-weight:500;border-top:2px solid #1a1815;background:#f5f3ef!important;}.lev-titel{font-size:15px;font-weight:600;margin-bottom:1rem;padding-bottom:6px;border-bottom:2px solid #1a1815;}.lev-sektion{page-break-before:always;margin-top:2rem;}@media print{body{padding:1.5rem;}@page{margin:1.5cm;size:A4;}}</style></head><body>
+  <div class="header"><div class="logo">Rt</div><div class="header-right"><h1>Returliste</h1><p>Retura &nbsp;·&nbsp; ${dato}</p></div></div>
+  <div class="meta"><div><div class="meta-label">Sagsnummer</div><div class="meta-value">${cn}</div></div><div><div class="meta-label">Ordrer</div><div class="meta-value">${ordreNr||'—'}</div></div><div><div class="meta-label">Dato</div><div class="meta-value">${dato}</div></div></div>
+  ${sektioner}
   <div class="footer"><span>Retura</span><span>Sag: ${cn} &nbsp;·&nbsp; ${dato}</span></div>
   <script>window.onload=function(){window.print();};<\/script></body></html>`);
   w.document.close();

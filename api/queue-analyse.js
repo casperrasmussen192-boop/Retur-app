@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   // ── POST: start et nyt job ──
   if (req.method === "POST") {
         try {
-                const { jobId, sagsnummer, filer, model } = req.body;
+                const { jobId, sagsnummer, filer, model, leverandor } = req.body;
                 if (!jobId || !sagsnummer || !Array.isArray(filer) || !filer.length) {
                           return res.status(400).json({ error: "Angiv jobId, sagsnummer og filer" });
                 }
@@ -59,6 +59,8 @@ export default async function handler(req, res) {
                                 model: job.model,
                                 blobUrl: f.blobUrl,
                                 filnavn: f.filnavn,
+                                // Valgfri manuel leverandør (BD/AO). Tom = automatisk genkendelse.
+                                leverandor: f.leverandor || leverandor || "",
                     },
                     retries: 2,
           }));
