@@ -2179,9 +2179,11 @@ function renderResults(caseNum){
     <div class="stat-box"><div class="stat-lbl">Ordrer</div><div class="stat-val">${nOrd}</div></div>
     <div class="stat-box"><div class="stat-lbl">Unikke varer</div><div class="stat-val">${ks.length}</div></div>
     <div class="stat-box"><div class="stat-lbl">Enheder i alt</div><div class="stat-val">${Math.round(total)}</div></div>`;
-  document.getElementById('o-tbl').innerHTML=ks.length
+  const bekræftelser=(parsed.ordrer||[]).filter(o=>!tællerMed(o));
+  const bekNote=bekræftelser.length?`<div style="font-size:13px;color:var(--amber);background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px;">ℹ ${bekræftelser.length} ordrebekræftelse${bekræftelser.length>1?'r':''} (${bekræftelser.map(o=>esc(o.ordrenr)).join(', ')}) er læst, men tæller ikke med som købt, da varerne endnu ikke er leveret. Se dem under "Pr. ordre".</div>`:'';
+  document.getElementById('o-tbl').innerHTML=bekNote+(ks.length
     ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}${t[k].beskrivelse?`<span class="hidden-search">${t[k].beskrivelse}</span>`:''}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
-    :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>';
+    :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>');
   renderPrOrdre();
   opdaterHurtigNavnListe(ks.map(k=>t[k].navn));
   // Forvælg leverandør i Hurtig registrering hvis sagen kun handler om én leverandør
