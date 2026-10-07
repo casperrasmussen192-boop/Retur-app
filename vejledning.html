@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Retura — Vejledning</title>
+<link rel="icon" href="/icon-512.png">
+<meta name="theme-color" content="#0f4c81">
+<style>
+:root{--ink:#0a0a0a;--ink-2:#525252;--ink-3:#8a8a8a;--paper:#fafaf9;--surface:#fff;--border:#e7e5e4;--accent:#0f4c81;--accent-light:#e8f0f9;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--paper);color:var(--ink);line-height:1.55;padding:16px;}
+.wrap{max-width:680px;margin:0 auto;}
+.logo{width:40px;height:40px;background:var(--accent);color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;border-radius:9px;margin:8px 0 12px;}
+h1{font-size:26px;margin-bottom:4px;}
+.sub{color:var(--ink-3);font-size:14px;margin-bottom:20px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 18px 14px;margin-bottom:16px;}
+h2{font-size:17px;margin-bottom:10px;color:var(--accent);}
+h3{font-size:14px;margin:14px 0 6px;}
+ol,ul{padding-left:22px;font-size:15px;}
+li{margin-bottom:6px;}
+p{font-size:15px;margin-bottom:10px;}
+.tip{background:var(--accent-light);border-radius:8px;padding:10px 12px;font-size:14px;margin:10px 0;}
+.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:14px;margin:10px 0;}
+code,.url{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:#f5f5f4;padding:2px 6px;border-radius:4px;word-break:break-all;}
+.footer{font-size:12px;color:var(--ink-3);text-align:center;margin:24px 0 8px;}
+@media print{body{background:#fff;padding:0}.card{break-inside:avoid;box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Rt</div>
+  <h1>Retura — vejledning</h1>
+  <div class="sub">Sådan får du appen på telefonen og laver en returliste</div>
+
+  <div class="card">
+    <h2>1. Kom i gang</h2>
+    <p>Appen ligger her:</p>
+    <p><span class="url">https://retura-casperrasmussen192-3633s-projects.vercel.app</span></p>
+    <ol>
+      <li>Åbn linket på din telefon.</li>
+      <li>Tryk <strong>Opret konto</strong> og derefter <strong>Jeg har en kode</strong>.</li>
+      <li>Skriv den invitationskode, du har fået af Casper, plus dit navn, din e-mail og en adgangskode.</li>
+      <li>Næste gang trykker du bare <strong>Log ind</strong>.</li>
+    </ol>
+    <div class="tip">Koden virker kun én gang og udløber efter 7 dage. Mangler du en ny, så bed Casper om det.</div>
+  </div>
+
+  <div class="card">
+    <h2>2. Få appen ned på telefonen</h2>
+    <p>Retura skal ikke hentes i App Store eller Google Play. Du lægger den på hjemmeskærmen direkte fra internettet, og så åbner den som en almindelig app uden adresselinje.</p>
+
+    <h3>iPhone (Safari)</h3>
+    <ol>
+      <li>Åbn linket i <strong>Safari</strong> (ikke i en anden browser).</li>
+      <li>Tryk på <strong>Del-knappen</strong> (firkanten med en pil op, nederst i midten).</li>
+      <li>Scroll ned og tryk <strong>Føj til hjemmeskærm</strong>.</li>
+      <li>Tryk <strong>Tilføj</strong>. Nu ligger "Retura" som et ikon på hjemmeskærmen.</li>
+    </ol>
+
+    <h3>Android (Chrome)</h3>
+    <ol>
+      <li>Åbn linket i <strong>Chrome</strong>.</li>
+      <li>Tryk på <strong>⋮</strong> (tre prikker øverst til højre).</li>
+      <li>Tryk <strong>Installer app</strong> eller <strong>Føj til startskærm</strong>.</li>
+      <li>Bekræft med <strong>Installer</strong>. Ikonet "Retura" ligger nu på startskærmen.</li>
+    </ol>
+    <div class="tip">Kan du ikke se punktet, så log først ind og prøv igen. Er der stadig intet, så åbn menuen med ⋮ og se efter "Føj til startskærm".</div>
+  </div>
+
+  <div class="card">
+    <h2>3. Sådan laver du en returliste</h2>
+    <ol>
+      <li><strong>Åbn eller opret sagen.</strong> Tryk <strong>+ Opret sag</strong> og skriv sagsnummeret, eller åbn en sag på listen.</li>
+      <li><strong>Upload følgesedlerne.</strong> Vælg PDF-filerne (flere ad gangen går fint) og tryk <strong>Analyser ordrer</strong>. Appen læser selv, om det er fra BD eller AO. Det tager typisk et minut eller to.</li>
+      <li><strong>Tjek oversigten.</strong> Her ser du, hvad der er købt i alt. Under <strong>Pr. ordre</strong> kan du se de enkelte følgesedler.</li>
+      <li><strong>Tryk Angiv antal retur.</strong> Skriv, hvor mange du lægger retur, ud for hver vare. Du kan søge i listen øverst.</li>
+      <li><strong>Tryk Generer returliste.</strong> Appen fordeler returen på ordrerne, nyeste først.</li>
+      <li><strong>Send eller gem den.</strong> Tryk <strong>Send retur til …</strong> (åbner et mailudkast), <strong>Kopier</strong> eller <strong>Udskriv / PDF</strong>.</li>
+    </ol>
+    <div class="tip">Har du varer fra både BD og AO i samme sag, får du én returliste og én send-knap pr. leverandør.</div>
+  </div>
+
+  <div class="card">
+    <h2>4. Små ting uden følgeseddel</h2>
+    <p>Brug <strong>Hurtig registrering</strong>: skriv varenavn, antal og vælg leverandør. Appen foreslår navne, mens du skriver. Varen lægges direkte i returlisten. Ramte du forkert, så tryk på skraldespanden ved varen.</p>
+  </div>
+
+  <div class="card">
+    <h2>5. Hvis noget ikke virker</h2>
+    <ul>
+      <li><strong>"Kunne ikke læse filen"/"ukendt leverandør":</strong> Vælg leverandøren under <strong>Leverandør</strong> (BD eller AO) og prøv filen igen med knappen under fejlmeldingen.</li>
+      <li><strong>Forkert navn eller antal:</strong> I Angiv antal retur trykker du på <strong>✎</strong> ved varen og retter det.</li>
+      <li><strong>Ordrebekræftelser</strong> (AO) kan ses under Pr. ordre, men tæller ikke med som købt, før varen er leveret.</li>
+      <li><strong>Faktura og kreditnota fra AO og alt fra Stark</strong> kan appen endnu ikke læse. Send dem til Casper, så bliver de lagt ind.</li>
+      <li>Hvis appen beder om login igen, så log bare ind på ny.</li>
+    </ul>
+    <div class="warn">Kommer der en fejl, så skriv til Casper med sagsnummer og filnavn. Så kan den rettes samme dag.</div>
+  </div>
+
+  <div class="card">
+    <h2>For admin: inviter en ny montør</h2>
+    <p>Tryk på <strong>⋮</strong>-menuen øverst til højre, vælg <strong>Montører</strong>, og tryk <strong>Generer invitationskode</strong>. Send koden til personen — den virker én gang og i 7 dage. Under <strong>Indstillinger</strong> kan du lægge returmail ind for hver leverandør.</p>
+  </div>
+
+  <div class="footer">Retura</div>
+</div>
+</body>
+</html>
