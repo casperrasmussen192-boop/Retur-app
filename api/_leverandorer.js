@@ -36,33 +36,53 @@ Returner KUN JSON uden markdown:
     system: "Du er en JSON-generator specialiseret i følgesedler og ordrebekræftelser fra AO / EA Værktøj. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
     regler: `Udtrækker ALLE varelinjer fra dokumentet fra AO (EA Værktøj).
 
-VIGTIGT om dokumenttype:
-- Står der "Følgeseddel" i toppen: type = "følgeseddel".
-- Står der "Ordrebekræftelse" i toppen: type = "ordrebekræftelse".
-- Står der "Faktura": type = "faktura". Står der "Kreditnota": type = "kreditnota".
+VIGTIGT om dokumenttype (stå i toppen af dokumentet):
+- "Følgeseddel": type = "følgeseddel".
+- "Ordrebekræftelse": type = "ordrebekræftelse".
+- "Faktura": type = "faktura".
+- "Kreditnota": type = "kreditnota".
+- "Returkvittering": type = "returkvittering" (kvittering for varer der er returneret til AO).
+Der er to layouts. FØLGESEDDEL, ORDREBEKRÆFTELSE og RETURKVITTERING har en grå boks øverst til venstre med "AO ordrenummer". FAKTURA og KREDITNOTA har en tabel øverst med kolonnerne Kunde, Projektnavn, Lever.dato, Antal lev., Ordrenr, Fakturadato og Side.
 
-VIGTIGT om dokumentnumre:
-- Ordrenummeret står i feltet "AO ordrenummer" og er 10-cifret og starter typisk med 108 (f.eks. 1081946181).
-- IGNORER "Leveringsnummer", "Fragtbrev nr.", "Reference", kundenummer, Rute, Pakkenr/SSCC og alle andre tal i headeren — de er IKKE ordrenummeret.
+VIGTIGT om ordrenummer (altid 10 cifre, behold foranstillede nuller som tekst):
+- Følgeseddel, ordrebekræftelse, returkvittering: feltet "AO ordrenummer" (f.eks. 1081946181 eller 0073949279).
+- Faktura og kreditnota: feltet "Ordrenr" i tabellen øverst (f.eks. 1082386338 eller 0073947523).
+- Ordrenumre starter typisk med 108 eller 007.
+- IGNORER fakturanummeret/kreditnotanummeret der står som overskrift ved ordet FAKTURA/KREDITNOTA (8 cifre, f.eks. 23955796 eller 78654334) — det er IKKE ordrenummeret.
+- IGNORER også "Leveringsnummer", "Fragtbrev nr.", "Reference", "Kundens ordre", kundenummer (2330521000), Projekt, Rute, Pakkenr/SSCC, Antal lev., CVR-, konto- og IBAN-numre.
 
-VIGTIGT om varelinjer:
+VIGTIGT om varelinjer — FØLGESEDDEL:
 - Kolonner: Linje, Emballage, Varenummer, Varenavn, Bestilt, Leveret, Tidl. Lev, Rest.
 - "antal" er ALTID tallet under "Leveret" — IKKE "Bestilt". Er Leveret 0 eller tomt på en linje (varen er restordre), så udelad linjen.
-- På en ordrebekræftelse findes der ingen leverede mængder: brug "Bestilt" som antal.
-- "pos" er tallet i kolonnen "Linje" (f.eks. "10"), ellers null.
-- "varenr" er varenummeret (f.eks. 853006462). Lagerkoden ("010" fra "Lager 010 - AO centrallager") er IKKE en del af varenummeret.
+- "pos" er tallet i kolonnen "Linje" (f.eks. "10").
+
+VIGTIGT om varelinjer — ORDREBEKRÆFTELSE og RETURKVITTERING:
+- Kolonner: Linje, Lager, Varenummer, Varenavn, Antal, Forv. Lev.
+- "antal" er tallet i kolonnen "Antal" (ved ordrebekræftelse er det det bestilte). Ved returkvittering står antal allerede som negativt tal (f.eks. -15 MTR): behold det negative fortegn.
+- "pos" er tallet i kolonnen "Linje".
+- Lagerkoden (f.eks. 010 eller 370 i kolonnen Lager) er IKKE en del af varenummeret.
+
+VIGTIGT om varelinjer — FAKTURA og KREDITNOTA:
+- Kolonner: Stregkode, Beskrivelse/Varenr., VG, Antal/Enh, Pris/Afgift, Samlet pris, Varerab %, Nettobeløb.
+- Hver vare fylder én linje: varebeskrivelsen står øverst (fed) og VARENUMMERET står lige under (f.eks. 186154032). "navn" = beskrivelsen, "varenr" = varenummeret under.
+- "antal" er tallet i kolonnen "Antal"; enheden (STK, LGD osv.) står lige under tallet. På en kreditnota er antal negativt (f.eks. -1): behold fortegnet.
+- Står den samme vare på flere linjer, så skal hver linje med som sin egen linje — læg dem IKKE sammen.
+- "pos": null (disse dokumenter har ingen linjenummer).
+- IGNORER stregkode, VG (varegruppe), Pris, Afgift, Samlet pris, Varerab %, Nettobeløb, Ordretotal, Moms og Total. Priser skal IKKE med.
+
+VIGTIGT om alle dokumenttyper:
 - "navn" er varenavnet præcis som det står (AO skriver ofte med store bogstaver og afkortet — behold det, men fjern overflødige mellemrum).
 - IGNORER linjer med "EAN:" og "Pakkenr / SSCC:" — de må ikke ind i navn eller beskrivelse. Læg eventuelle andre ekstra tekstlinjer i "beskrivelse".
 - IGNORER kolli, emballage, nettovægt, bruttovægt, volume og totaler — det er ikke varer.
-- "enhed" er enheden efter antallet (STK, M, PK, SæT osv.) med små bogstaver, f.eks. "stk".
-- For kreditnotaer skal antal være negativt.
+- "enhed" er enheden efter antallet (STK, M, MTR, LGD, PK, SæT osv.) med små bogstaver, f.eks. "stk".
+- For kreditnotaer og returkvitteringer skal antal være negativt. Faktura, følgeseddel og ordrebekræftelse har positivt antal.
 
 VIGTIGT om dato:
-- Brug "Lev. Dato" (følgeseddel) eller dokumentets dato (ordrebekræftelse).
-- Datoen står enten som seks cifre (ddmmåå, f.eks. 260826 = 26-08-26) eller som dd/mm/åååå. Skriv den altid som "dd-mm-yy" (f.eks. "26-08-26").
+- Følgeseddel: "Lev. Dato". Faktura/kreditnota: "Lever.dato". Ordrebekræftelse/returkvittering: "Ordredato" (eller "Forv. Lev.").
+- Datoen står enten som seks cifre ddmmåå (f.eks. 260826 = 26-08-26, 081026 = 08-10-26, 121026 = 12-10-26) eller som dd/mm/åååå (f.eks. 13/10/2026). Skriv den altid som "dd-mm-yy" (f.eks. "26-08-26").
 
 Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<108...>","type":"<følgeseddel eller ordrebekræftelse eller faktura eller kreditnota>","dato":"<dd-mm-yy>","linjer":[{"pos":"<linje eller null>","varenr":"<varenr>","navn":"<varenavn>","beskrivelse":"<ekstra linjer eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}`,
+{"ordrer":[{"ordrenr":"<10 cifre>","type":"<følgeseddel eller ordrebekræftelse eller faktura eller kreditnota eller returkvittering>","dato":"<dd-mm-yy>","linjer":[{"pos":"<linje eller null>","varenr":"<varenr>","navn":"<varenavn>","beskrivelse":"<ekstra linjer eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}`,
   },
 };
 
@@ -74,7 +94,7 @@ export const GENKENDELSE = {
   prompt: `Hvilken leverandør har udstedt dette dokument (afsenderen — ikke kunden)?
 
 - "BD": Brødrene Dahl (Brødrene Dahl A/S, "BD"). SAP-layout med følgeseddel, faktura eller kreditnota, "Ordrenr." 101..., fakturanr. 111..., kreditnota 300..., "Pos"-kolonne, evt. "Leveres fra et andet lager", og bank-/IBAN-oplysninger nederst.
-- "AO": AO / EA Værktøj med logo "AO EA VÆRKTØJ", feltet "AO ordrenummer" (108...), "Bestilt hos", "Leveringsnummer" og "Fragtbrev nr.".
+- "AO": AO / EA Værktøj med logo "AO" / "EA VÆRKTØJ" (adresse Rørvang 3, Albertslund). Dokumenttyper: Følgeseddel, Ordrebekræftelse, Returkvittering (felt "AO ordrenummer" 108... eller 007...), samt Faktura og Kreditnota (tabel med "Ordrenr", "Lever.dato", "Rekvireret hos").
 - "UKENDT": kun hvis dokumentet tydeligvis hverken er fra Brødrene Dahl eller AO.
 
 Svar kun med ét af ordene: BD, AO eller UKENDT.`,
