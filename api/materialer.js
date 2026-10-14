@@ -16,11 +16,13 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: "Ikke logget ind" });
 
   const key = "firma:" + user.firmaId + ":materialer";
+  // Varenummer -> varenavn (bruges til at foreslå rettelser, når et varenummer eller navn ser forkert ud)
+  const varerKey = "firma:" + user.firmaId + ":varenumre";
 
   if (req.method === "GET") {
     try {
-      const navne = await redis.smembers(key);
-      return res.status(200).json({ navne: navne || [] });
+      const [navne, varer] = await Promise.all([redis.smembers(key), redis.hgetall(varerKey)]);
+      return res.status(200).json({ navne: navne || [], varer: varer || {} });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -28,7 +30,28 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     try {
-      const { navne } = req.body || {};
+      const { navne, par, overskriv } = req.body || {};
+
+      // Par af varenummer + navn. Uden overskriv beholdes det navn, der allerede er gemt (første gælder);
+      // med overskriv (brugeren har selv rettet) erstattes det.
+      if (Array.isArray(par)) {
+        const rene = par
+          .map(p => ({ varenr: String((p && p.varenr) || "").trim().slice(0, 40), navn: String((p && p.navn) || "").trim().slice(0, 200) }))
+          .filter(p => p.varenr && p.navn)
+          .slice(0, 300);
+        if (!rene.length) return res.status(400).json({ error: "Ingen gyldige par" });
+        if (overskriv) {
+          const felter = {};
+          for (const p of rene) felter[p.varenr] = p.navn;
+          await redis.hset(varerKey, felter);
+        } else {
+          const pipeline = redis.pipeline();
+          for (const p of rene) pipeline.hsetnx(varerKey, p.varenr, p.navn);
+          await pipeline.exec();
+        }
+        return res.status(200).json({ success: true });
+      }
+
       if (!Array.isArray(navne) || !navne.length) {
         return res.status(400).json({ error: "Angiv navne" });
       }

@@ -1572,7 +1572,9 @@ async function hentMaterialeBibliotek(){
     if(!resp.ok)return;
     const data=await resp.json();
     window._materialeBibliotek=data.navne||[];
+    window._varebibliotek=data.varer||{};
     opdaterHurtigNavnListe((parsed&&parsed.ordrer||[]).flatMap(o=>(o.linjer||[]).map(l=>l.navn)));
+    bidragFraAnalyse(); // gem varenumre fra den åbnede sag (udfylder biblioteket for ældre sager)
   }catch(e){}
 }
 
@@ -2000,6 +2002,7 @@ async function go(){
     applyGlobalFilter();
     indlaesReturTotal(caseNum);
     gemSession();
+    bidragFraAnalyse();
     logHistorik('analyse', files.length+' følgesedler analyseret', [], alleOrdrer.length, null, fejledeFiler.length);
     document.getElementById('chat').innerHTML=`<div class="msg msg-ai"><div class="avatar">Rt</div><div class="bubble">Jeg har læst <strong>${files.length}</strong> følgesedler fra sag <strong>${caseNum}</strong> — fandt <strong>${alleOrdrer.length}</strong> ordrer. Tryk "Angiv antal retur" for at fortsætte.</div></div>`;
 
@@ -2076,6 +2079,7 @@ async function retryFejledeFiler(fileList){
 
     renderResults(caseNum);
     gemSession();
+    bidragFraAnalyse();
     logHistorik('analyse', nyeFiler.length+' erstatningsfil(er) analyseret', [], (job.ordrer||[]).length, null, stadigFejlede.length);
     if(statusEl && !fejledeAktuelle.length)statusEl.textContent='';
   }catch(err){
@@ -2094,6 +2098,74 @@ function varenrMistænkt(lev,varenr){
   const f=VARENR_FORMAT[lev];
   const v=String(varenr||'').trim();
   return !!(f&&v&&!f.test(v));
+}
+// ── Forslag til rettelse ud fra firmaets varebibliotek (varenr. → navn fra tidligere læsninger) ──
+// VIGTIGT: Varenumre kan ende på forskellige tal for forskellige størrelser (fx 186020100 / 186020150 / 186020200
+// = rør på hhv. 1000/1500/2000 mm). Derfor "retter" vi aldrig et gyldigt varenr. til et andet, og et forslag
+// til et forkert formateret varenr. kræver, at tallene i varenavnet (størrelser) er helt ens.
+function navnNøgle(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9ÆØÅ]+/g,' ').trim();}
+function talNøgle(s){return navnNøgle(s).split(' ').filter(t=>/\d/.test(t)).sort().join(' ');}
+function levenshtein(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  let forrige=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){
+    const nu=[i];
+    for(let j=1;j<=n;j++)nu[j]=Math.min(forrige[j]+1,nu[j-1]+1,forrige[j-1]+(a[i-1]===b[j-1]?0:1));
+    forrige=nu;
+  }
+  return forrige[n];
+}
+function navnLighed(a,b){const l=Math.max(a.length,b.length);return l?1-levenshtein(a,b)/l:1;}
+function foreslaaRettelse(r){
+  const bib=window._varebibliotek;
+  if(!bib)return null;
+  const navn=navnNøgle(r.navn),tal=talNøgle(r.navn);
+  const vn=String(r.varenr||'').trim();
+  if(!vn)return null;
+  if(Object.prototype.hasOwnProperty.call(bib,vn)){
+    // Kendt varenr.: foreslå bibliotekets stavemåde, hvis navnet er næsten ens (stavefejl) men ikke ens
+    const bn=navnNøgle(bib[vn]);
+    if(bn!==navn&&talNøgle(bib[vn])===tal&&navnLighed(navn,bn)>=0.8)return{varenr:vn,navn:bib[vn],årsag:'navn'};
+    return null;
+  }
+  const lev=levAf(r);
+  if(!varenrMistænkt(lev,vn))return null;
+  let bedst=null;
+  for(const kv of Object.keys(bib)){
+    if(varenrMistænkt(lev,kv))continue;
+    const d=levenshtein(vn,kv);
+    if(d>2)continue;
+    if(talNøgle(bib[kv])!==tal)continue;
+    const l=navnLighed(navn,navnNøgle(bib[kv]));
+    if(l<0.8)continue;
+    const score=l-d*0.05;
+    if(!bedst||score>bedst.score)bedst={varenr:kv,navn:bib[kv],årsag:'varenr',score};
+  }
+  return bedst;
+}
+// Send nye varenr./navn-par til firmaets bibliotek. Uden overskriv beholdes det der allerede står.
+function bidragTilVarebibliotek(par,overskriv){
+  if(!window._varebibliotek)window._varebibliotek={};
+  const bib=window._varebibliotek;
+  const nye=[];
+  for(const p of par||[]){
+    const vn=String(p.varenr||'').trim(),nv=String(p.navn||'').trim();
+    if(!vn||!nv||varenrMistænkt(p.lev||'BD',vn))continue;
+    if(!overskriv&&Object.prototype.hasOwnProperty.call(bib,vn))continue;
+    bib[vn]=nv;
+    nye.push({varenr:vn,navn:nv});
+  }
+  if(!nye.length)return;
+  fetch('/api/materialer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({par:nye.slice(0,300),overskriv:!!overskriv})}).catch(()=>{});
+}
+function bidragFraAnalyse(){
+  const par=[];
+  for(const ord of (parsed&&parsed.ordrer)||[]){
+    if(!tællerMed(ord)||String(ord.ordrenr).startsWith('MANUEL'))continue;
+    for(const l of ord.linjer||[])par.push({varenr:l.varenr,navn:l.navn,lev:levAf(ord)});
+  }
+  bidragTilVarebibliotek(par,false);
 }
 function varenrAdvarsel(lev,varenr){
   return varenrMistænkt(lev,varenr)?` <span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;font-family:inherit;" title="${lev}-varenumre har normalt 9 cifre. Tjek tallet mod følgesedlen og ret det med ✎ hvis det er forkert.">⚠ tjek varenr.</span>`:'';
@@ -2337,7 +2409,7 @@ function renderReturTable(){
       :`<td class="td-dim">—</td>`;
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
-      <td style="min-width:170px;"><div style="display:flex;align-items:flex-start;gap:6px;"><div style="flex:1;min-width:0;"><div style="font-weight:500;line-height:1.3;word-break:break-word;">${esc(r.navn)}</div>${r.beskrivelse?`<span class="hidden-search">${esc(r.beskrivelse)}</span>`:''}${flereLevRed?`<span class="max-lbl" style="display:block;margin-top:2px;">${levAf(r)}</span>`:''}</div><button type="button" class="ghost" onclick="redigerVare(${i})" title="Ret navn, varenr. eller antal købt hvis AI'en har læst forkert" style="height:26px;width:26px;padding:0;flex-shrink:0;">✎</button></div></td>
+      <td style="min-width:170px;"><div style="display:flex;align-items:flex-start;gap:6px;"><div style="flex:1;min-width:0;"><div style="font-weight:500;line-height:1.3;word-break:break-word;">${esc(r.navn)}</div>${r.beskrivelse?`<span class="hidden-search">${esc(r.beskrivelse)}</span>`:''}${flereLevRed?`<span class="max-lbl" style="display:block;margin-top:2px;">${levAf(r)}</span>`:''}${forslagHtml(r,i)}</div><button type="button" class="ghost" onclick="redigerVare(${i})" title="Ret navn, varenr. eller antal købt hvis AI'en har læst forkert" style="height:26px;width:26px;padding:0;flex-shrink:0;">✎</button></div></td>
       <td class="td-mono" style="white-space:nowrap;">${esc(r.varenr)||'—'}${varenrAdvarsel(levAf(r),r.varenr)}</td>
       <td style="white-space:nowrap;"><span class="td-bold">${Math.round(r.antal)}</span> <span class="max-lbl">${esc(r.enhed)}</span></td>
       ${tidlCell}
@@ -2374,14 +2446,56 @@ function updateBadge(){const n=returData.filter(r=>r.checked).length;document.ge
 function redigerVare(i){
   const r=returData[i];
   if(!r)return;
+  const ændr={};
   const navn=prompt('Varenavn:',r.navn||'');
-  if(navn!==null&&navn.trim())r.navn=navn.trim();
+  if(navn!==null&&navn.trim())ændr.navn=navn.trim();
   const varenr=prompt('Varenr.:',r.varenr||'');
-  if(varenr!==null)r.varenr=varenr.trim();
+  if(varenr!==null)ændr.varenr=varenr.trim();
   const antal=prompt('Antal købt i alt:',String(Math.round(r.antal)));
-  if(antal!==null&&antal.trim()!==''&&Number.isFinite(Number(antal)))r.antal=Math.max(0,Number(antal));
-  renderReturTable();
+  if(antal!==null&&antal.trim()!==''&&Number.isFinite(Number(antal)))ændr.antal=Number(antal);
+  retVare(i,ændr);
+}
+// Anvend en rettelse på varen — både i returlisten og i de læste ordrelinjer, så rettelsen overlever,
+// når listen genopbygges. Brugerens egen rettelse gemmes også i firmaets varebibliotek (og vinder over tidligere).
+function retVare(i,ændr){
+  const r=returData[i];
+  if(!r||!ændr)return;
+  const nøgle=l=>(l.varenr||l.navn||'?').toString();
+  const gammel=nøgle(r);
+  if(parsed&&parsed.ordrer){
+    // Antal: læg forskellen på første linje med varen (rækkens antal er summen over alle ordrer)
+    if(ændr.antal!==undefined){
+      const delta=ændr.antal-(Number(r.antal)||0);
+      outer:for(const ord of parsed.ordrer)for(const l of ord.linjer||[])if(tællerMed(ord)&&nøgle(l)===gammel){l.antal=(Number(l.antal)||0)+delta;break outer;}
+    }
+    for(const ord of parsed.ordrer)for(const l of ord.linjer||[]){
+      if(nøgle(l)===gammel){
+        if(ændr.navn!==undefined)l.navn=ændr.navn;
+        if(ændr.varenr!==undefined)l.varenr=ændr.varenr;
+      }
+    }
+    ctx=JSON.stringify(parsed);
+  }
+  Object.assign(r,ændr);
+  if(ændr.navn!==undefined||ændr.varenr!==undefined)bidragTilVarebibliotek([{varenr:r.varenr,navn:r.navn,lev:levAf(r)}],true);
+  // Genopbyg listen, så en rettelse der gør to rækker ens (samme varenr.) bliver slået sammen
+  visReturEditor();
+  renderResults(document.getElementById('case-num')?.value||'ukendt');
   gemSession();
+}
+function forslagHtml(r,i){
+  const f=foreslaaRettelse(r);
+  if(!f)return '';
+  const tekst=f.årsag==='varenr'
+    ?`Mente du <b>${esc(f.navn)}</b> (varenr. <span class="td-mono">${esc(f.varenr)}</span>)?`
+    :`Foreslået navn: <b>${esc(f.navn)}</b>`;
+  return `<div style="margin-top:4px;font-size:12px;color:var(--amber);background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 8px;">💡 ${tekst} <button type="button" class="ghost" onclick="brugForslag(${i})" style="height:22px;padding:0 8px;font-size:11px;margin-left:4px;">Brug</button></div>`;
+}
+function brugForslag(i){
+  const r=returData[i];
+  const f=r&&foreslaaRettelse(r);
+  if(!f)return;
+  retVare(i,{navn:f.navn,varenr:f.varenr});
 }
 function updateFelt(i,felt,val){
   returData[i][felt]=felt==='antal'?(Number(val)||0):val;
