@@ -918,6 +918,7 @@ tbody tr:hover td { background: var(--surface-2); }
         <div class="dropzone-icon">📂</div>
         <div class="dropzone-text">Klik eller træk filer hertil</div>
         <div class="dropzone-sub">Understøtter flere filer på én gang</div>
+        <div class="dropzone-sub" style="margin-top:4px;">Fotos: brug telefonens "Scan dokument" for bedst læsning</div>
         <input type="file" id="fi" accept=".pdf,application/pdf,image/*" multiple style="display:none"/>
       </div>
       <div class="file-list" id="file-list"></div>
@@ -1817,10 +1818,10 @@ function genererJobId(){
   return 'job-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
 }
 
-// Gør et foto til et JPEG på højst 2400 px på den lange led. Respekterer kameraets rotation.
-// 2400 px er nok til, at småt print (varenumre) stadig kan læses.
+// Gør et foto til et JPEG på højst 3000 px på den lange led (kvalitet 92 %). Respekterer kameraets rotation.
+// Høj opløsning og lav komprimering gør, at småt print (varenumre) kan læses sikkert.
 async function billedTilJpeg(file){
-  const MAKS=2400;
+  const MAKS=3000;
   let bmp;
   try{
     bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
@@ -1835,7 +1836,7 @@ async function billedTilJpeg(file){
   ctx2.fillStyle='#fff';ctx2.fillRect(0,0,b,h); // hvid baggrund hvis PNG har gennemsigtighed
   ctx2.drawImage(bmp,0,0,b,h);
   if(bmp.close)bmp.close();
-  const jpeg=await new Promise(res=>canvas.toBlob(res,'image/jpeg',0.85));
+  const jpeg=await new Promise(res=>canvas.toBlob(res,'image/jpeg',0.92));
   if(!jpeg)throw new Error('Billedet kunne ikke formindskes');
   return jpeg;
 }
@@ -2086,6 +2087,17 @@ async function retryFejledeFiler(fileList){
 // Ordrer uden leverandør-felt (gemt før AO blev tilføjet) er altid BD.
 const LEVERANDORER=['BD','AO'];
 function levAf(x){return (x&&x.leverandor)||'BD';}
+// Kendt format for en leverandørs varenumre. Et varenr. der ikke passer, er næsten altid en fejllæsning
+// (fx et ciffer for meget i et foto). Leverandører uden kendt format tjekkes ikke.
+const VARENR_FORMAT={AO:/^\d{9}$/};
+function varenrMistænkt(lev,varenr){
+  const f=VARENR_FORMAT[lev];
+  const v=String(varenr||'').trim();
+  return !!(f&&v&&!f.test(v));
+}
+function varenrAdvarsel(lev,varenr){
+  return varenrMistænkt(lev,varenr)?` <span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;font-family:inherit;" title="${lev}-varenumre har normalt 9 cifre. Tjek tallet mod følgesedlen og ret det med ✎ hvis det er forkert.">⚠ tjek varenr.</span>`:'';
+}
 // Ordrebekræftelser er kun varsler om hvad der er bestilt — ikke leveret — så de tæller ikke med som "købt".
 function tællerMed(ord){return ord.type!=='ordrebekræftelse';}
 // HTML-escape til værdier i attributter og tekst (AO-varenavne indeholder fx tommetegn ")
@@ -2224,7 +2236,7 @@ function renderResults(caseNum){
   const bekræftelser=(parsed.ordrer||[]).filter(o=>!tællerMed(o));
   const bekNote=bekræftelser.length?`<div style="font-size:13px;color:var(--amber);background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px;">ℹ ${bekræftelser.length} ordrebekræftelse${bekræftelser.length>1?'r':''} (${bekræftelser.map(o=>esc(o.ordrenr)).join(', ')}) er læst, men tæller ikke med som købt, da varerne endnu ikke er leveret. Se dem under "Pr. ordre".</div>`:'';
   document.getElementById('o-tbl').innerHTML=bekNote+(ks.length
-    ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}${t[k].beskrivelse?`<span class="hidden-search">${t[k].beskrivelse}</span>`:''}</td><td class="td-mono">${t[k].varenr||'—'}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
+    ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}${t[k].beskrivelse?`<span class="hidden-search">${t[k].beskrivelse}</span>`:''}</td><td class="td-mono">${t[k].varenr||'—'}${varenrAdvarsel(levAf(t[k]),t[k].varenr)}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
     :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>');
   renderPrOrdre();
   opdaterHurtigNavnListe(ks.map(k=>t[k].navn));
@@ -2326,7 +2338,7 @@ function renderReturTable(){
     return`<tr class="retur-row ${r.checked?'checked':''}" id="rrow-${i}">
       <td><input type="checkbox" ${r.checked?'checked':''} onchange="toggleRow(${i},this.checked)"/></td>
       <td style="min-width:170px;"><div style="display:flex;align-items:flex-start;gap:6px;"><div style="flex:1;min-width:0;"><div style="font-weight:500;line-height:1.3;word-break:break-word;">${esc(r.navn)}</div>${r.beskrivelse?`<span class="hidden-search">${esc(r.beskrivelse)}</span>`:''}${flereLevRed?`<span class="max-lbl" style="display:block;margin-top:2px;">${levAf(r)}</span>`:''}</div><button type="button" class="ghost" onclick="redigerVare(${i})" title="Ret navn, varenr. eller antal købt hvis AI'en har læst forkert" style="height:26px;width:26px;padding:0;flex-shrink:0;">✎</button></div></td>
-      <td class="td-mono" style="white-space:nowrap;">${esc(r.varenr)||'—'}</td>
+      <td class="td-mono" style="white-space:nowrap;">${esc(r.varenr)||'—'}${varenrAdvarsel(levAf(r),r.varenr)}</td>
       <td style="white-space:nowrap;"><span class="td-bold">${Math.round(r.antal)}</span> <span class="max-lbl">${esc(r.enhed)}</span></td>
       ${tidlCell}
       <td><div class="retur-qty-cell"><input type="number" min="0" max="${kanRetur}" value="${Math.round(r.returAntal)}" id="qty-${i}" onchange="updateQty(${i},this.value)"/><span class="max-lbl">/ ${Math.round(kanRetur)}</span></div></td>
@@ -2458,6 +2470,8 @@ function returLeverandorer(valgte){
 function genererRetur(){
   const valgte=returData.filter(r=>r.checked&&r.returAntal>0);
   if(!valgte.length){alert('Angiv antal retur for mindst én vare.');return;}
+  const mistænkte=valgte.filter(r=>varenrMistænkt(levAf(r),r.varenr));
+  if(mistænkte.length&&!confirm('Disse varenumre ser forkerte ud (forkert antal cifre):\n\n'+mistænkte.map(r=>'• '+r.navn+' — '+r.varenr).join('\n')+'\n\nTryk Annuller for at rette dem med ✎ først, eller OK for at fortsætte alligevel.'))return;
   const caseNum=document.getElementById('case-num').value||'ukendt';
   const totalRetur=valgte.reduce((s,r)=>s+r.returAntal,0);
   // Én returliste pr. leverandør — en retur til AO skal aldrig stå på en liste til BD
