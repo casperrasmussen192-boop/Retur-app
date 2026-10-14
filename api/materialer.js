@@ -26,15 +26,18 @@ export default async function handler(req, res) {
 
   const key = "firma:" + user.firmaId + ":materialer";
   // Varenummer -> varenavn (bruges til at foreslå rettelser, når et varenummer eller navn ser forkert ud)
-  // "-v2": bibliotek nulstillet, så det kun indeholder pålidelige par (se bidragFraAnalyse i index.html)
-  const varerKey = "firma:" + user.firmaId + ":varenumre-v2";
+  // "-v3": felterne er "LEVERANDØR|varenr", så to grossister med samme varenummer ikke blandes sammen.
+  // Biblioteket indeholder kun pålidelige par (se bidragFraAnalyse i index.html).
+  const varerKey = "firma:" + user.firmaId + ":varenumre-v3";
+  // Leverandører firmaet har brugt: nøgle -> visningsnavn (fyldes af process-fil.js)
+  const levKey = "firma:" + user.firmaId + ":leverandorer";
   // EAN (stregkode) -> { varenr, navn } (bruges til at genkende en vare ved scanning)
   const eanKey = "firma:" + user.firmaId + ":ean-v1";
 
   if (req.method === "GET") {
     try {
-      const [navne, varer, ean] = await Promise.all([redis.smembers(key), redis.hgetall(varerKey), redis.hgetall(eanKey)]);
-      return res.status(200).json({ navne: navne || [], varer: varer || {}, ean: ean || {} });
+      const [navne, varer, ean, leverandorer] = await Promise.all([redis.smembers(key), redis.hgetall(varerKey), redis.hgetall(eanKey), redis.hgetall(levKey)]);
+      return res.status(200).json({ navne: navne || [], varer: varer || {}, ean: ean || {}, leverandorer: leverandorer || {} });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -48,17 +51,22 @@ export default async function handler(req, res) {
       // Samme regel som ovenfor: uden overskriv gælder det første; med overskriv har brugeren selv bekræftet.
       if (Array.isArray(ean)) {
         const rene = ean
-          .map(p => ({ ean: String((p && p.ean) || "").replace(/\D/g, ""), varenr: String((p && p.varenr) || "").trim().slice(0, 40), navn: String((p && p.navn) || "").trim().slice(0, 200) }))
+          .map(p => ({
+            ean: String((p && p.ean) || "").replace(/\D/g, ""),
+            lev: String((p && p.lev) || "").toUpperCase().replace(/[^A-ZÆØÅÜÖ0-9]/g, "").slice(0, 20),
+            varenr: String((p && p.varenr) || "").trim().slice(0, 40),
+            navn: String((p && p.navn) || "").trim().slice(0, 200),
+          }))
           .filter(p => gyldigEan(p.ean) && p.navn)
           .slice(0, 300);
         if (!rene.length) return res.status(400).json({ error: "Ingen gyldige EAN-par" });
         if (overskriv) {
           const felter = {};
-          for (const p of rene) felter[p.ean] = JSON.stringify({ varenr: p.varenr, navn: p.navn });
+          for (const p of rene) felter[p.ean] = JSON.stringify({ lev: p.lev, varenr: p.varenr, navn: p.navn });
           await redis.hset(eanKey, felter);
         } else {
           const pipeline = redis.pipeline();
-          for (const p of rene) pipeline.hsetnx(eanKey, p.ean, JSON.stringify({ varenr: p.varenr, navn: p.navn }));
+          for (const p of rene) pipeline.hsetnx(eanKey, p.ean, JSON.stringify({ lev: p.lev, varenr: p.varenr, navn: p.navn }));
           await pipeline.exec();
         }
         return res.status(200).json({ success: true });
@@ -68,17 +76,21 @@ export default async function handler(req, res) {
       // med overskriv (brugeren har selv rettet) erstattes det.
       if (Array.isArray(par)) {
         const rene = par
-          .map(p => ({ varenr: String((p && p.varenr) || "").trim().slice(0, 40), navn: String((p && p.navn) || "").trim().slice(0, 200) }))
+          .map(p => ({
+            lev: String((p && p.lev) || "BD").toUpperCase().replace(/[^A-ZÆØÅÜÖ0-9]/g, "").slice(0, 20) || "BD",
+            varenr: String((p && p.varenr) || "").trim().slice(0, 40),
+            navn: String((p && p.navn) || "").trim().slice(0, 200),
+          }))
           .filter(p => p.varenr && p.navn)
           .slice(0, 300);
         if (!rene.length) return res.status(400).json({ error: "Ingen gyldige par" });
         if (overskriv) {
           const felter = {};
-          for (const p of rene) felter[p.varenr] = p.navn;
+          for (const p of rene) felter[p.lev + "|" + p.varenr] = p.navn;
           await redis.hset(varerKey, felter);
         } else {
           const pipeline = redis.pipeline();
-          for (const p of rene) pipeline.hsetnx(varerKey, p.varenr, p.navn);
+          for (const p of rene) pipeline.hsetnx(varerKey, p.lev + "|" + p.varenr, p.navn);
           await pipeline.exec();
         }
         return res.status(200).json({ success: true });

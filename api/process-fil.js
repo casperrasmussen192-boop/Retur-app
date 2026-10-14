@@ -6,7 +6,7 @@ import { Redis } from "@upstash/redis";
 import { Receiver } from "@upstash/qstash";
 import { get } from "@vercel/blob";
 import Anthropic from "@anthropic-ai/sdk";
-import { PROFILER, GYLDIGE, GENKENDELSE, tolkGenkendelse, bygPrompt } from "./_leverandorer.js";
+import { PROFILER, GENERISK, GYLDIGE, GENKENDELSE, tolkGenkendelse, bygPrompt, lavLeverandorNoegle } from "./_leverandorer.js";
 
 export const config = { api: { bodyParser: false } };
 
@@ -102,8 +102,11 @@ export default async function handler(req, res) {
       : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
     // ── Trin 1: find leverandør (manuelt valg fra brugeren vinder over automatisk genkendelse) ──
-    let leverandør = GYLDIGE.includes((leverandorValg || "").toUpperCase()) ? leverandorValg.toUpperCase() : null;
-    if (!leverandør) {
+    // Kendt leverandør (BD/AO) → fast profil. Alt andet ("Anden" valgt, eller ikke genkendt) → generisk profil,
+    // så enhver grossist kan bruges. Generisk læsning markeres på ordren, så brugeren ved, at den bør kontrolleres.
+    const valgt = (leverandorValg || "").toUpperCase();
+    let leverandør = GYLDIGE.includes(valgt) ? valgt : null;
+    if (!leverandør && valgt !== "ANDEN") {
       const gk = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 10,
@@ -112,11 +115,9 @@ export default async function handler(req, res) {
         messages: [{ role: "user", content: [dokument, { type: "text", text: GENKENDELSE.prompt }] }],
       });
       leverandør = tolkGenkendelse(gk.content.filter(c => c.type === "text").map(c => c.text).join(""));
-      if (!leverandør) {
-        throw new Error("Kunne ikke genkende leverandøren — vælg leverandør manuelt og prøv igen");
-      }
     }
-    const profil = PROFILER[leverandør];
+    const generisk = !leverandør;
+    const profil = generisk ? GENERISK : PROFILER[leverandør];
 
     // ── Trin 2: udtræk varelinjer med leverandørens egne regler ──
     const response = await client.messages.create({
@@ -137,7 +138,21 @@ export default async function handler(req, res) {
     if (start === -1 || slut === -1) throw new Error("Intet JSON i svaret");
     const data = JSON.parse(tekst.slice(start, slut + 1));
     // Stempl hver ordre med leverandøren, så frontend kan dele returlisten pr. leverandør
-    for (const o of data.ordrer || []) o.leverandor = leverandør;
+    const levNavne = {}; // nøgle -> visningsnavn, til firmaets leverandørliste
+    for (const o of data.ordrer || []) {
+      if (generisk) {
+        // Leverandøren aflæses fra dokumentet; samme grossist får altid samme nøgle
+        const navn = typeof o.leverandornavn === "string" && o.leverandornavn.trim() && o.leverandornavn.trim().toLowerCase() !== "null" ? o.leverandornavn.trim().slice(0, 40) : null;
+        o.leverandor = lavLeverandorNoegle(navn);
+        o.leverandorNavn = navn || "Anden leverandør";
+        o.generisk = true;
+        delete o.leverandornavn;
+      } else {
+        o.leverandor = leverandør;
+        o.leverandorNavn = leverandør;
+      }
+      levNavne[o.leverandor] = o.leverandorNavn;
+    }
     // Hvor stammer tallene fra? En PDF har selve teksten i filen (pålidelig), et foto skal aflæses (kan fejllæses).
     // Bruges til kun at lade pålidelige læsninger ind i firmaets varebibliotek.
     for (const o of data.ordrer || []) o.kilde = erBillede ? "foto" : "pdf";
@@ -155,6 +170,10 @@ export default async function handler(req, res) {
         (data.ordrer || []).flatMap(o => (o.linjer || []).map(l => (l.navn || "").trim())).filter(Boolean)
       )];
       if (navne.length) await redis.sadd(`firma:${firmaId}:materialer`, ...navne);
+      // Firmaets leverandørliste (bruges til returmail-indstillinger og rullemenuer). Første visningsnavn gælder.
+      const pipe = redis.pipeline();
+      for (const [nøgle, navn] of Object.entries(levNavne)) pipe.hsetnx(`firma:${firmaId}:leverandorer`, nøgle, navn);
+      if (Object.keys(levNavne).length) await pipe.exec();
     } catch {}
 
     // Øg tælleren atomisk (INCR kan ikke miste opdateringer, uanset hvor mange der kører samtidig)

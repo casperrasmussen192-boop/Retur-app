@@ -91,6 +91,51 @@ Returner KUN JSON uden markdown:
 
 export const GYLDIGE = Object.keys(PROFILER);
 
+// Generisk profil til grossister, vi ikke har en fast profil for (fx Stark, Lemvigh-Müller, Solar).
+// Bruges, når leverandøren ikke genkendes, eller når brugeren vælger "Anden". Reglerne er bevidst almene,
+// og resultatet markeres i appen, så brugeren ved at det er læst uden fast profil.
+export const GENERISK = {
+  navn: "ANDEN",
+  system: "Du er en JSON-generator specialiseret i danske grossisters følgesedler, fakturaer og kreditnotaer. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
+  regler: `Udtrækker ALLE varelinjer fra dokumentet. Dokumentet kan være en PDF eller et foto af et papirdokument (taget på skrå, med skygger eller let sløret). Læs tal og varenumre særligt omhyggeligt. Gæt aldrig et ulæseligt tal — udelad hellere linjen.
+
+VIGTIGT om afsenderen:
+- "leverandornavn" er navnet på firmaet der har UDSTEDT dokumentet (grossisten/sælgeren — IKKE kunden). Kort form, f.eks. "Stark", "Lemvigh-Müller", "Solar", "Ahlsell". Står det ikke tydeligt, så brug null.
+
+VIGTIGT om dokumenttype:
+- Følgeseddel/Leveringsseddel: "følgeseddel". Faktura: "faktura". Kreditnota: "kreditnota". Ordrebekræftelse/Ordrebekræftelse: "ordrebekræftelse". Returkvittering/Returseddel: "returkvittering".
+
+VIGTIGT om ordrenummer:
+- "ordrenr" er leverandørens ordrenummer/ordrenr/salgsordre — det nummer der samler dokumenterne for den samme ordre. Følgeseddel, faktura og kreditnota for samme ordre skal have samme ordrenr, hvis de står på dokumentet.
+- Er der ikke noget ordrenummer, så brug dokumentets eget nummer (følgeseddelnr./fakturanr./kreditnotanr.).
+- IGNORER kundenummer, projekt/reference/rekvisition, bank-/IBAN-/CVR-/telefonnumre, postnumre og sidetal.
+
+VIGTIGT om varelinjer:
+- "varenr" er varenummer/artikelnummer. "navn" er varebeskrivelsen (første linje, kort — behold leverandørens stavemåde). Ekstra beskrivelseslinjer lægges i "beskrivelse".
+- "antal" er det LEVEREDE/fakturerede antal (ikke det bestilte, hvis begge står). Er der et restordre-antal på 0 for en linje, så udelad linjen.
+- På en ordrebekræftelse er antal det bestilte.
+- For kreditnotaer og returkvitteringer skal antal være negativt (behold minus, hvis det allerede står der). Alle andre typer har positivt antal.
+- "enhed" er enheden (stk, m, lgd, pk, sæt …) med små bogstaver.
+- "pos" er linjenummeret/positionsnummeret, hvis der er en sådan kolonne — ellers null. Opfind aldrig et pos.nr.
+- Står en vare på flere linjer, skal hver linje med som sin egen linje — læg dem ikke sammen.
+- "ean" er stregkodens tal (EAN, 8 eller 13 cifre), hvis det står ved varen — ellers tom streng. EAN må ikke ind i navn eller beskrivelse.
+- IGNORER priser, rabatter, moms, totaler, vægt, volumen, kolli/pakkenumre, stregkoder, bankoplysninger og leveringsadresser. Priser skal IKKE med.
+
+VIGTIGT om dato:
+- Brug leveringsdatoen (følgeseddel), fakturadatoen (faktura/kreditnota) eller dokumentdatoen. Skriv den altid som "dd-mm-yy" (f.eks. "26-08-26"). Datoer kan stå som dd/mm/åååå, dd.mm.åå eller seks cifre ddmmåå.
+
+Returner KUN JSON uden markdown:
+{"ordrer":[{"leverandornavn":"<udsteder eller null>","ordrenr":"<ordrenr>","type":"<følgeseddel eller faktura eller kreditnota eller ordrebekræftelse eller returkvittering>","dato":"<dd-mm-yy>","linjer":[{"pos":"<pos eller null>","varenr":"<varenr>","navn":"<varebeskrivelse>","beskrivelse":"<ekstra linjer eller tom>","ean":"<EAN-cifre eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}`,
+};
+
+// Gør et leverandørnavn fra dokumentet til en stabil nøgle (store bogstaver, kun bogstaver/tal, maks. 20 tegn).
+// "Lemvigh-Müller A/S" → "LEMVIGHMÜLLERAS". Ukendt/tomt navn → "ANDEN".
+export function lavLeverandorNoegle(navn) {
+  const n = String(navn || "").toUpperCase().replace(/\b(A\/S|APS|ApS|AB|AS|A-S)\b/gi, "").replace(/[^A-ZÆØÅÜÖ0-9]+/g, "").slice(0, 20);
+  const ALIAS = { BRØDRENEDAHL: "BD", AOEAVÆRKTØJ: "AO", EAVÆRKTØJ: "AO" };
+  return ALIAS[n] || n || "ANDEN";
+}
+
 // Trin 1: billig genkendelse. Svaret skal være ét ord: BD, AO eller UKENDT.
 export const GENKENDELSE = {
   system: "Du genkender hvilken leverandør et dansk handelsdokument stammer fra. Svar med PRÆCIS ét ord og intet andet.",

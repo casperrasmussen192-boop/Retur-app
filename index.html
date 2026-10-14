@@ -775,10 +775,8 @@ tbody tr:hover td { background: var(--surface-2); }
     <div class="card">
       <div class="card-title"><div class="card-icon">✉</div>Returmail pr. leverandør</div>
       <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Bruges som forudfyldt modtager når I trykker "Send retur til …". Kan stå tom — så vælger I modtager i jeres mailprogram.</p>
-      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">BD</label>
-      <input type="email" id="inst-bdemail" class="note-input" style="max-width:320px;margin-bottom:12px;" placeholder="retur@bd.dk"/>
-      <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;">AO</label>
-      <input type="email" id="inst-aoemail" class="note-input" style="max-width:320px;" placeholder="retur@ao.dk"/>
+      <div id="inst-lev-emails"></div>
+      <p style="font-size:12px;color:var(--ink-3);margin-top:8px;">Nye grossister dukker op her, første gang en seddel fra dem er læst.</p>
     </div>
     <div class="btn-row" style="margin-bottom:1rem;">
       <button class="success" onclick="gemIndstillinger()">Gem</button>
@@ -954,6 +952,7 @@ tbody tr:hover td { background: var(--surface-2); }
         <option value="">Automatisk (anbefalet)</option>
         <option value="BD">BD</option>
         <option value="AO">AO</option>
+        <option value="ANDEN">Anden grossist (generisk læsning)</option>
       </select>
     </div>
   </div>
@@ -1209,14 +1208,25 @@ async function visIndstillinger(){
   document.getElementById('view-indstillinger').style.display='';
   document.getElementById('inst-status').textContent='';
   try{
+    // Leverandørlisten (alle grossister firmaet har brugt) hentes sammen med indstillingerne
+    try{
+      const lr=await fetch('/api/materialer',{headers:{'Authorization':'Bearer '+getApiKey()}});
+      if(lr.ok){const ld=await lr.json();window._leverandorNavne={...(window._leverandorNavne||{}),...(ld.leverandorer||{})};}
+    }catch(_){}
     const resp=await fetch('/api/indstillinger',{headers:{'Authorization':'Bearer '+getApiKey()}});
     const data=await resp.json();
     if(resp.ok){
       document.getElementById('inst-timepris').value=data.indstillinger.timepris;
-      document.getElementById('inst-bdemail').value=data.indstillinger.bdEmail||'';
-      document.getElementById('inst-aoemail').value=data.indstillinger.aoEmail||'';
+      window._indstEmails=levEmailsFra(data.indstillinger);
+      document.getElementById('inst-lev-emails').innerHTML=alleLeverandorer().map(k=>`
+        <label style="display:block;font-size:13px;color:var(--ink-2);margin:10px 0 6px;">${esc(levNavn(k))}</label>
+        <input type="email" data-lev="${esc(k)}" class="note-input inst-lev-email" style="max-width:320px;" placeholder="retur@${esc(levNavn(k).toLowerCase().replace(/[^a-z0-9]/g,''))||'leverandor'}.dk" value="${esc(window._indstEmails[k]||'')}"/>`).join('');
     }
   }catch(e){}
+}
+// Returmail pr. leverandør samlet i ét objekt: BD/AO fra de oprindelige felter, resten fra "emails"
+function levEmailsFra(ind){
+  return {...(ind.emails||{}),BD:ind.bdEmail||'',AO:ind.aoEmail||''};
 }
 function skjulIndstillinger(){
   document.getElementById('view-indstillinger').style.display='none';
@@ -1235,15 +1245,19 @@ async function gemIndstillinger(){
     const resp=await fetch('/api/indstillinger',{
       method:'PATCH',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},
-      body:JSON.stringify({
-        timepris:document.getElementById('inst-timepris').value,
-        bdEmail:document.getElementById('inst-bdemail').value,
-        aoEmail:document.getElementById('inst-aoemail').value
-      })
+      body:JSON.stringify((()=>{
+        const emails={};
+        let bd='',ao='';
+        document.querySelectorAll('.inst-lev-email').forEach(inp=>{
+          const k=inp.getAttribute('data-lev'),v=inp.value.trim();
+          if(k==='BD')bd=v;else if(k==='AO')ao=v;else emails[k]=v;
+        });
+        return {timepris:document.getElementById('inst-timepris').value,bdEmail:bd,aoEmail:ao,emails};
+      })())
     });
     const data=await resp.json();
     if(!resp.ok)throw new Error(data.error||'Kunne ikke gemme');
-    window._levEmails={BD:data.indstillinger.bdEmail||'',AO:data.indstillinger.aoEmail||''};
+    window._levEmails=levEmailsFra(data.indstillinger);
     statusEl.style.color='var(--green)';
     statusEl.textContent='Gemt ✓';
     setTimeout(()=>statusEl.textContent='',2000);
@@ -1577,10 +1591,19 @@ async function hentMaterialeBibliotek(){
     if(!resp.ok)return;
     const data=await resp.json();
     window._materialeBibliotek=data.navne||[];
-    window._varebibliotek=data.varer||{};
+    // Felterne hedder "LEVERANDØR|varenr" — gør dem om til { LEVERANDØR: { varenr: navn } }
+    window._varebibliotek={};
+    for(const [felt,navn] of Object.entries(data.varer||{})){
+      const i=felt.indexOf('|');
+      if(i<1)continue;
+      const lev=felt.slice(0,i),vn=felt.slice(i+1);
+      (window._varebibliotek[lev]=window._varebibliotek[lev]||{})[vn]=navn;
+    }
+    window._leverandorNavne={...(window._leverandorNavne||{}),...(data.leverandorer||{})};
+    opdaterLevValg();
     window._eanBibliotek={};
     for(const [e,v] of Object.entries(data.ean||{})){
-      try{const o=typeof v==='string'?JSON.parse(v):v;if(o&&o.navn)window._eanBibliotek[e]={varenr:o.varenr||'',navn:o.navn};}catch(_){}
+      try{const o=typeof v==='string'?JSON.parse(v):v;if(o&&o.navn)window._eanBibliotek[e]={lev:o.lev||'',varenr:o.varenr||'',navn:o.navn};}catch(_){}
     }
     opdaterHurtigNavnListe((parsed&&parsed.ordrer||[]).flatMap(o=>(o.linjer||[]).map(l=>l.navn)));
     bidragFraAnalyse(); // gem varenumre fra den åbnede sag (udfylder biblioteket for ældre sager)
@@ -2098,8 +2121,35 @@ async function retryFejledeFiler(fileList){
 
 // ── Leverandører ──
 // Ordrer uden leverandør-felt (gemt før AO blev tilføjet) er altid BD.
-const LEVERANDORER=['BD','AO'];
+const FASTE_LEVERANDORER=['BD','AO']; // grossister med fast læseprofil — alle andre læses med den generiske profil
 function levAf(x){return (x&&x.leverandor)||'BD';}
+// Visningsnavn for en leverandørnøgle (fx "STARK" → "Stark"). Kommer fra firmaets leverandørliste eller fra ordrerne.
+function levNavn(k){
+  if(window._leverandorNavne&&window._leverandorNavne[k])return window._leverandorNavne[k];
+  const o=((parsed&&parsed.ordrer)||[]).find(x=>levAf(x)===k&&x.leverandorNavn);
+  return o?o.leverandorNavn:k;
+}
+// Alle leverandører appen kender: de faste, firmaets tidligere brugte og dem i den åbne sag
+function alleLeverandorer(){
+  const s=[...FASTE_LEVERANDORER];
+  for(const k of Object.keys(window._leverandorNavne||{}))if(!s.includes(k))s.push(k);
+  for(const o of (parsed&&parsed.ordrer)||[]){const k=levAf(o);if(!s.includes(k))s.push(k);}
+  return s;
+}
+// Fyld leverandørvælgeren i Hurtig registrering med alle kendte leverandører
+function opdaterLevValg(){
+  const sel=document.getElementById('hurtig-lev');
+  if(!sel)return;
+  const nu=sel.value;
+  sel.innerHTML=alleLeverandorer().map(k=>`<option value="${esc(k)}">${esc(levNavn(k))}</option>`).join('');
+  if([...sel.options].some(o=>o.value===nu))sel.value=nu;
+}
+// Varebibliotek: { LEVERANDØR: { varenr: navn } }
+function alleVarer(){
+  const ud=[];
+  for(const [lev,m] of Object.entries(window._varebibliotek||{}))for(const [vn,navn] of Object.entries(m))ud.push({lev,varenr:vn,navn});
+  return ud;
+}
 // Kendt format for en leverandørs varenumre. Et varenr. der ikke passer, er næsten altid en fejllæsning
 // (fx et ciffer for meget i et foto). Leverandører uden kendt format tjekkes ikke.
 const VARENR_FORMAT={AO:/^\d{9}$/};
@@ -2127,7 +2177,8 @@ function levenshtein(a,b){
 }
 function navnLighed(a,b){const l=Math.max(a.length,b.length);return l?1-levenshtein(a,b)/l:1;}
 function foreslaaRettelse(r){
-  const bib=window._varebibliotek;
+  // Kun leverandørens egne kendte varer — to grossister kan bruge samme varenummer til hver sin vare
+  const bib=(window._varebibliotek||{})[levAf(r)];
   if(!bib)return null;
   const navn=navnNøgle(r.navn),tal=talNøgle(r.navn);
   const vn=String(r.varenr||'').trim();
@@ -2156,14 +2207,15 @@ function foreslaaRettelse(r){
 // Send nye varenr./navn-par til firmaets bibliotek. Uden overskriv beholdes det der allerede står.
 function bidragTilVarebibliotek(par,overskriv){
   if(!window._varebibliotek)window._varebibliotek={};
-  const bib=window._varebibliotek;
   const nye=[];
   for(const p of par||[]){
+    const lev=p.lev||'BD';
     const vn=String(p.varenr||'').trim(),nv=String(p.navn||'').trim();
-    if(!vn||!nv||varenrMistænkt(p.lev||'BD',vn))continue;
+    if(!vn||!nv||varenrMistænkt(lev,vn))continue;
+    const bib=(window._varebibliotek[lev]=window._varebibliotek[lev]||{});
     if(!overskriv&&Object.prototype.hasOwnProperty.call(bib,vn))continue;
     bib[vn]=nv;
-    nye.push({varenr:vn,navn:nv});
+    nye.push({lev,varenr:vn,navn:nv});
   }
   if(!nye.length)return;
   fetch('/api/materialer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({par:nye.slice(0,300),overskriv:!!overskriv})}).catch(()=>{});
@@ -2176,7 +2228,7 @@ function bidragFraAnalyse(){
     if(ord.kilde!=='pdf'||!tællerMed(ord)||String(ord.ordrenr).startsWith('MANUEL'))continue;
     for(const l of ord.linjer||[]){
       par.push({varenr:l.varenr,navn:l.navn,lev:levAf(ord)});
-      if(l.ean&&l.varenr&&l.navn)eanPar.push({ean:l.ean,varenr:l.varenr,navn:l.navn});
+      if(l.ean&&l.varenr&&l.navn)eanPar.push({ean:l.ean,varenr:l.varenr,navn:l.navn,lev:levAf(ord)});
     }
   }
   bidragTilVarebibliotek(par,false);
@@ -2201,9 +2253,9 @@ function bidragEan(par,overskriv){
     const nv=String(p.navn||'').trim();
     if(!gyldigEan(e)||!nv)continue;
     if(!overskriv&&Object.prototype.hasOwnProperty.call(bib,e))continue;
-    if(overskriv&&bib[e]&&bib[e].navn===nv&&(bib[e].varenr||'')===(p.varenr||''))continue;
-    bib[e]={varenr:p.varenr||'',navn:nv};
-    nye.push({ean:e,varenr:p.varenr||'',navn:nv});
+    if(overskriv&&bib[e]&&bib[e].navn===nv&&(bib[e].varenr||'')===(p.varenr||'')&&(bib[e].lev||'')===(p.lev||''))continue;
+    bib[e]={lev:p.lev||'',varenr:p.varenr||'',navn:nv};
+    nye.push({ean:e,lev:p.lev||'',varenr:p.varenr||'',navn:nv});
   }
   if(!nye.length)return;
   fetch('/api/materialer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({ean:nye.slice(0,300),overskriv:!!overskriv})}).catch(()=>{});
@@ -2216,13 +2268,12 @@ let scanKontekst=null; // {ean, varenr, navn} for den vare brugeren har valgt vi
 function tekstTokens(s){return navnNøgle(s).split(' ').filter(t=>t.length>=2);}
 function talKlumper(s){return (String(s||'').match(/\d+/g)||[]);}
 function findKandidater(læst){
-  const bib=window._varebibliotek||{};
   const label=[læst.navn,læst.storrelse,læst.tekst,læst.varenr].filter(Boolean).join(' ');
   const labelTokens=new Set(tekstTokens(label));
   const labelTal=new Set(talKlumper(label));
   if(!labelTokens.size)return[];
   const kandidater=[];
-  for(const [vn,navn] of Object.entries(bib)){
+  for(const {lev,varenr:vn,navn} of alleVarer()){
     const toks=tekstTokens(navn);
     if(!toks.length)continue;
     // Alle tal i det kendte navn (størrelser!) skal også stå på etiketten — ellers er det en anden vare
@@ -2232,7 +2283,7 @@ function findKandidater(læst){
     if(delt<2)continue;
     const dice=2*delt/(toks.length+labelTokens.size);
     if(dice<0.25)continue;
-    kandidater.push({varenr:vn,navn,score:dice});
+    kandidater.push({lev,varenr:vn,navn,score:dice});
   }
   return kandidater.sort((a,b)=>b.score-a.score).slice(0,3);
 }
@@ -2278,14 +2329,15 @@ async function scanVare(fileList){
 function visScanResultat(ean,læst){
   const el=document.getElementById('scan-resultat');
   const eanBib=window._eanBibliotek||{};
-  const bib=window._varebibliotek||{};
-  const knap=(c,i)=>`<button type="button" class="ghost" onclick="vaelgScan(${i})" style="height:auto;min-height:30px;padding:4px 10px;margin:3px 6px 3px 0;text-align:left;">${esc(c.navn)}${c.varenr?` <span class="td-mono">${esc(c.varenr)}</span>`:''}</button>`;
+  const flereLev=new Set(alleVarer().map(v=>v.lev)).size>1;
+  const knap=(c,i)=>`<button type="button" class="ghost" onclick="vaelgScan(${i})" style="height:auto;min-height:30px;padding:4px 10px;margin:3px 6px 3px 0;text-align:left;">${esc(c.navn)}${c.varenr?` <span class="td-mono">${esc(c.varenr)}</span>`:''}${flereLev&&c.lev?` <span class="max-lbl">${esc(levNavn(c.lev))}</span>`:''}</button>`;
   let kandidater=[],overskrift='';
+  const sammeVarenr=læst.varenr?alleVarer().filter(v=>v.varenr===læst.varenr):[];
   if(ean&&eanBib[ean]){
     kandidater=[{...eanBib[ean],ean}];
     overskrift=`✅ Stregkoden er kendt (${esc(ean)}):`;
-  }else if(læst.varenr&&Object.prototype.hasOwnProperty.call(bib,læst.varenr)){
-    kandidater=[{varenr:læst.varenr,navn:bib[læst.varenr],ean:ean||null}];
+  }else if(sammeVarenr.length){
+    kandidater=sammeVarenr.map(v=>({lev:v.lev,varenr:v.varenr,navn:v.navn,ean:ean||null}));
     overskrift=`✅ Varenummer ${esc(læst.varenr)} er kendt:`;
   }else{
     kandidater=findKandidater(læst).map(c=>({...c,ean:ean||null}));
@@ -2308,11 +2360,14 @@ function vaelgScan(i){
   if(!c)return;
   document.getElementById('hurtig-navn').value=c.navn;
   scanKontekst={ean:c.ean||null,varenr:c.varenr||'',navn:c.navn};
+  // Varen hører til en bestemt leverandør — vælg den, så varen havner på den rigtige returliste
+  const sel=document.getElementById('hurtig-lev');
+  if(sel&&c.lev&&[...sel.options].some(o=>o.value===c.lev))sel.value=c.lev;
   document.getElementById('scan-resultat').innerHTML=`✅ Valgt: <b>${esc(c.navn)}</b>${c.varenr?` (${esc(c.varenr)})`:''}`;
   document.getElementById('hurtig-antal')?.focus();
 }
 function varenrAdvarsel(lev,varenr){
-  return varenrMistænkt(lev,varenr)?` <span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;font-family:inherit;" title="${lev}-varenumre har normalt 9 cifre. Tjek tallet mod følgesedlen og ret det med ✎ hvis det er forkert.">⚠ tjek varenr.</span>`:'';
+  return varenrMistænkt(lev,varenr)?` <span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;font-family:inherit;" title="${levNavn(lev)}-varenumre har normalt 9 cifre. Tjek tallet mod følgesedlen og ret det med ✎ hvis det er forkert.">⚠ tjek varenr.</span>`:'';
 }
 // Ordrebekræftelser er kun varsler om hvad der er bestilt — ikke leveret — så de tæller ikke med som "købt".
 function tællerMed(ord){return ord.type!=='ordrebekræftelse';}
@@ -2374,7 +2429,7 @@ function hurtigRegistrering(){
   const scanVn=(sk&&sk.varenr)||'';
   let fundet=null;
   for(const ord of parsed.ordrer){
-    if(!tællerMed(ord))continue;
+    if(!tællerMed(ord)||levAf(ord)!==lev)continue; // kun varer fra den valgte leverandør
     for(const l of ord.linjer||[]){
       if((scanVn&&l.varenr===scanVn)||normNavn(l.navn)===maalNavn){fundet=l;break;}
     }
@@ -2395,7 +2450,7 @@ function hurtigRegistrering(){
   ctx=JSON.stringify(parsed);
 
   // Læg den samtidig direkte ind i returlisten, markeret til retur (det er jo pointen med hurtig registrering)
-  let row=returData.find(r=>(scanVn&&r.varenr===scanVn)||normNavn(r.navn)===maalNavn);
+  let row=returData.find(r=>levAf(r)===lev&&((scanVn&&r.varenr===scanVn)||normNavn(r.navn)===maalNavn));
   if(row){
     row.antal=(Number(row.antal)||0)+antal;
     row.returAntal=(Number(row.returAntal)||0)+antal;
@@ -2406,7 +2461,7 @@ function hurtigRegistrering(){
 
   // Lærte stregkoden at kende: brugeren har selv bekræftet navnet, så koden kan genkendes næste gang
   if(scanKontekst&&scanKontekst.ean){
-    bidragEan([{ean:scanKontekst.ean,varenr:scanVn,navn}],true);
+    bidragEan([{ean:scanKontekst.ean,varenr:scanVn,navn,lev}],true);
   }
   scanKontekst=null;
   const scanEl=document.getElementById('scan-resultat');
@@ -2438,9 +2493,10 @@ function getTotals(){
   for(const ord of parsed.ordrer||[]){
     if(!tællerMed(ord))continue;
     for(const l of ord.linjer||[]){
-      const k=l.varenr||l.navn||'?';
+      // Nøglen indeholder leverandøren, så to grossisters varer med samme varenummer aldrig slås sammen
+      const k=levAf(ord)+'|'+(l.varenr||l.navn||'?');
       if(!t[k]){
-        t[k]={navn:l.navn||k,varenr:l.varenr||'',beskrivelse:l.beskrivelse||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||'',leverandor:levAf(ord)};
+        t[k]={navn:l.navn||l.varenr||'?',varenr:l.varenr||'',beskrivelse:l.beskrivelse||'',antal:0,enhed:l.enhed||'stk',pos:l.pos||'',leverandor:levAf(ord)};
         order.push(k);
       }
       t[k].antal+=Number(l.antal)||0;
@@ -2461,12 +2517,16 @@ function renderResults(caseNum){
     <div class="stat-box"><div class="stat-lbl">Unikke varer</div><div class="stat-val">${ks.length}</div></div>
     <div class="stat-box"><div class="stat-lbl">Enheder i alt</div><div class="stat-val">${Math.round(total)}</div></div>`;
   const bekræftelser=(parsed.ordrer||[]).filter(o=>!tællerMed(o));
+  // Ordrer læst uden fast leverandørprofil (grossist vi ikke har lavet regler til) — bed om kontrol
+  const generiske=[...new Set((parsed.ordrer||[]).filter(o=>o.generisk).map(o=>levNavn(levAf(o))))];
+  const genNote=generiske.length?`<div style="font-size:13px;color:var(--amber);background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px;">⚠ Læst uden fast leverandørprofil: <b>${generiske.map(esc).join(', ')}</b>. Kontrollér ordrenumre, varenumre og antal mod sedlen, før du lægger noget retur.</div>`:'';
   const bekNote=bekræftelser.length?`<div style="font-size:13px;color:var(--amber);background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px;">ℹ ${bekræftelser.length} ordrebekræftelse${bekræftelser.length>1?'r':''} (${bekræftelser.map(o=>esc(o.ordrenr)).join(', ')}) er læst, men tæller ikke med som købt, da varerne endnu ikke er leveret. Se dem under "Pr. ordre".</div>`:'';
-  document.getElementById('o-tbl').innerHTML=bekNote+(ks.length
+  document.getElementById('o-tbl').innerHTML=genNote+bekNote+(ks.length
     ?`<table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Købt i alt</th><th>Enhed</th></tr></thead><tbody>${ks.map(k=>`<tr><td>${t[k].navn}${t[k].beskrivelse?`<span class="hidden-search">${t[k].beskrivelse}</span>`:''}</td><td class="td-mono">${t[k].varenr||'—'}${varenrAdvarsel(levAf(t[k]),t[k].varenr)}</td><td class="td-bold">${Math.round(t[k].antal)}</td><td class="td-mono">${t[k].enhed}</td></tr>`).join('')}</tbody></table>`
     :'<p style="color:var(--ink-3);font-size:13px;">Ingen varelinjer genkendt.</p>');
   renderPrOrdre();
   opdaterHurtigNavnListe(ks.map(k=>t[k].navn));
+  opdaterLevValg();
   // Forvælg leverandør i Hurtig registrering hvis sagen kun handler om én leverandør
   const levSæt=[...new Set((parsed.ordrer||[]).filter(tællerMed).map(levAf))];
   const hl=document.getElementById('hurtig-lev');
@@ -2490,7 +2550,7 @@ function renderPrOrdre(){
   const harRetur=returData.some(r=>r.checked&&r.returAntal>0);
   const flereLev=new Set((parsed.ordrer||[]).map(levAf)).size>1;
   document.getElementById('d-content').innerHTML=(parsed.ordrer||[]).map(ord=>{
-    const levBadge=flereLev?`<span class="badge b-blue" style="margin-left:8px;">${levAf(ord)}</span>`:'';
+    const levBadge=flereLev?`<span class="badge b-blue" style="margin-left:8px;">${esc(levNavn(levAf(ord)))}</span>`:'';
     if(!tællerMed(ord)){
       const bRows=[...(ord.linjer||[])].sort((a,b)=>(parseInt(a.pos)||999)-(parseInt(b.pos)||999)).map(l=>`<tr><td class="td-pos">${esc(l.pos)||'—'}</td><td>${esc(l.navn)||'—'}</td><td class="td-mono">${esc(l.varenr)||'—'}</td><td class="td-bold">${Math.round(l.antal)}</td><td class="td-mono">${esc(l.enhed)||'stk'}</td></tr>`).join('');
       return `<div class="ord-block"><div class="ord-title">${esc(ord.ordrenr)||'Ukendt'}${ord.dato?' — '+esc(ord.dato):''}<span class="badge" style="margin-left:8px;background:#fffbeb;color:var(--amber);border:1px solid #fde68a;">Ordrebekræftelse</span>${levBadge}</div>
@@ -2523,12 +2583,12 @@ function visReturEditor(){
   } else {
     // BEVAR ALT der er tastet ind — byg nyt array men kopier eksisterende værdier
     const prevMap={};
+    const rækkeNøgle=x=>levAf(x)+'|'+(x.varenr||x.navn||'').toLowerCase().replace(/^0+/,'').trim();
     returData.forEach(r=>{
-      const nk=(r.varenr||r.navn||'').toLowerCase().replace(/^0+/,'').trim();
-      prevMap[nk]=r;
+      prevMap[rækkeNøgle(r)]=r;
     });
     returData=ks.map(k=>{
-      const nk=(t[k].varenr||t[k].navn||'').toLowerCase().replace(/^0+/,'').trim();
+      const nk=rækkeNøgle(t[k]);
       const prev=prevMap[nk];
       if(prev){
         // Bevar præcis hvad brugeren har tastet — returAntal, checked, note
@@ -2617,14 +2677,15 @@ function retVare(i,ændr){
   if(!r||!ændr)return;
   const nøgle=l=>(l.varenr||l.navn||'?').toString();
   const gammel=nøgle(r);
+  const rækkeLev=levAf(r); // kun linjer fra samme leverandør som rækken
   if(parsed&&parsed.ordrer){
     // Antal: læg forskellen på første linje med varen (rækkens antal er summen over alle ordrer)
     if(ændr.antal!==undefined){
       const delta=ændr.antal-(Number(r.antal)||0);
-      outer:for(const ord of parsed.ordrer)for(const l of ord.linjer||[])if(tællerMed(ord)&&nøgle(l)===gammel){l.antal=(Number(l.antal)||0)+delta;break outer;}
+      outer:for(const ord of parsed.ordrer)for(const l of ord.linjer||[])if(tællerMed(ord)&&levAf(ord)===rækkeLev&&nøgle(l)===gammel){l.antal=(Number(l.antal)||0)+delta;break outer;}
     }
     for(const ord of parsed.ordrer)for(const l of ord.linjer||[]){
-      if(nøgle(l)===gammel){
+      if(levAf(ord)===rækkeLev&&nøgle(l)===gammel){
         if(ændr.navn!==undefined)l.navn=ændr.navn;
         if(ændr.varenr!==undefined)l.varenr=ændr.varenr;
       }
@@ -2664,8 +2725,10 @@ function sletVare(i){
 
   // Fjern varen fra parsed.ordrer også — ellers dukker den op igen næste gang listen genopbygges
   const rowKey=(r.varenr||r.navn||'?').toString();
+  const rowLev=levAf(r);
   if(parsed&&parsed.ordrer){
     for(const ord of parsed.ordrer){
+      if(levAf(ord)!==rowLev)continue;
       ord.linjer=(ord.linjer||[]).filter(l=>(l.varenr||l.navn||'?').toString()!==rowKey);
     }
     parsed.ordrer=parsed.ordrer.filter(ord=>(ord.linjer||[]).length>0);
@@ -2732,7 +2795,7 @@ function beregnFordelingFor(lev){
 // Hvilke leverandører har varer i returlisten (i fast rækkefølge)
 function returLeverandorer(valgte){
   const s=new Set(valgte.map(levAf));
-  const kendte=LEVERANDORER.filter(l=>s.has(l));
+  const kendte=alleLeverandorer().filter(l=>s.has(l));
   return [...kendte,...[...s].filter(l=>!kendte.includes(l))];
 }
 
@@ -2746,7 +2809,7 @@ function genererRetur(){
   // Én returliste pr. leverandør — en retur til AO skal aldrig stå på en liste til BD
   const levs=returLeverandorer(valgte);
   const flereLev=levs.length>1;
-  const sendKnapper=levs.map(l=>`<button onclick="sendRetur('${l}')">✉ Send retur til ${l}</button>`).join('');
+  const sendKnapper=levs.map(l=>`<button onclick="sendRetur('${l}')">✉ Send retur til ${esc(levNavn(l))}</button>`).join('');
   let html=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
     <div><div style="font-size:13px;color:var(--ink-2);margin-bottom:2px;">Sag: <strong style="color:var(--ink)">${esc(caseNum)}</strong></div><div style="font-size:12px;color:var(--ink-3);">Dato: ${new Date().toLocaleDateString('da-DK')}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="primary" onclick="copyRetur()">Kopier</button><button onclick="printRetur()">Udskriv / PDF</button>${sendKnapper}</div>
@@ -2755,7 +2818,7 @@ function genererRetur(){
     const levValgte=valgte.filter(r=>levAf(r)===lev);
     const levTotal=levValgte.reduce((s,r)=>s+r.returAntal,0);
     const fordeling=beregnFordeling(lev);
-    if(flereLev)html+=`<div style="font-size:15px;font-weight:600;color:var(--ink);margin:1.5rem 0 .75rem;padding-bottom:6px;border-bottom:2px solid var(--border-strong);">Retur til ${lev}</div>`;
+    if(flereLev)html+=`<div style="font-size:15px;font-weight:600;color:var(--ink);margin:1.5rem 0 .75rem;padding-bottom:6px;border-bottom:2px solid var(--border-strong);">Retur til ${esc(levNavn(lev))}</div>`;
     html+=`<div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:8px;">Samlet returliste</div>
     <table><thead><tr><th>Materiale</th><th>Varenr.</th><th>Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>
       ${levValgte.map(r=>`<tr><td>${esc(r.navn)}</td><td class="td-mono">${esc(r.varenr)||'—'}</td><td class="td-green">${Math.round(r.returAntal)}</td><td class="td-mono">${esc(r.enhed)}</td><td class="td-dim">${esc(r.note)||'—'}</td></tr>`).join('')}
@@ -2815,7 +2878,7 @@ function byggReturTekst(lev){
   for(const l of levs){
     const levValgte=valgte.filter(r=>levAf(r)===l);
     const fordeling=beregnFordeling(l);
-    if(levs.length>1)s+=`\n===== RETUR TIL ${l} =====\n`;
+    if(levs.length>1)s+=`\n===== RETUR TIL ${levNavn(l).toUpperCase()} =====\n`;
     s+=`\nSAMLET:\n`;
     levValgte.forEach(r=>{s+=`  ${r.navn} (${r.varenr}): ${Math.round(r.returAntal)} ${r.enhed}`;if(r.note)s+=` — ${r.note}`;s+='\n';});
     s+=`\nFORDELING PR. ORDRE:\n`;
@@ -2832,12 +2895,12 @@ function copyRetur(){
 async function sendRetur(lev){
   lev=lev||'BD';
   const {cn,valgte,s}=byggReturTekst(lev);
-  if(!valgte.length){alert('Ingen varer valgt til retur til '+lev+'.');return;}
+  if(!valgte.length){alert('Ingen varer valgt til retur til '+levNavn(lev)+'.');return;}
   if(window._levEmails===undefined){
     try{
       const resp=await fetch('/api/indstillinger',{headers:{'Authorization':'Bearer '+getApiKey()}});
       const data=await resp.json();
-      window._levEmails=resp.ok?{BD:data.indstillinger.bdEmail||'',AO:data.indstillinger.aoEmail||''}:{};
+      window._levEmails=resp.ok?levEmailsFra(data.indstillinger):{};
     }catch(e){window._levEmails={};}
   }
   const modtager=window._levEmails[lev]||'';
@@ -2849,7 +2912,7 @@ async function sendRetur(lev){
   }
   window.location.href=`mailto:${encodeURIComponent(modtager)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   const totalRetur=valgte.reduce((sum,r)=>sum+r.returAntal,0);
-  logHistorik('sendt','Returliste sendt til '+lev,valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})),Math.round(totalRetur));
+  logHistorik('sendt','Returliste sendt til '+levNavn(lev),valgte.map(r=>({navn:r.navn,varenr:r.varenr,antal:r.returAntal,enhed:r.enhed})),Math.round(totalRetur));
 }
 
 function printRetur(){
@@ -2885,7 +2948,7 @@ function printRetur(){
       </tbody></table>`;
     });
     return `<div class="${idx>0?'lev-sektion':''}">
-  ${printLevs.length>1?`<div class="lev-titel">Retur til ${lev}</div>`:''}
+  ${printLevs.length>1?`<div class="lev-titel">Retur til ${esc(levNavn(lev))}</div>`:''}
   <div class="summary-box"><div class="stat"><div class="stat-l">Varelinjer retur</div><div class="stat-v">${levValgte.length}</div></div><div class="stat"><div class="stat-l">Enheder i alt</div><div class="stat-v green">${Math.round(totalAntal)}</div></div></div>
   <div class="section-title">Samlet returliste</div>
   <table><thead><tr><th>Materiale</th><th>Varenr.</th><th style="text-align:right">Antal retur</th><th>Enhed</th><th>Note</th></tr></thead><tbody>${samletRows}<tr class="total-row"><td colspan="2"><strong>I alt</strong></td><td class="antal"><strong>${Math.round(totalAntal)}</strong></td><td colspan="2"></td></tr></tbody></table>
