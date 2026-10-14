@@ -965,6 +965,11 @@ tbody tr:hover td { background: var(--surface-2); }
       Hurtig registrering
     </div>
     <p style="font-size:13px;color:var(--ink-3);margin-bottom:1rem;">Til småting/spjældsager uden følgeseddel — skriv varenavn og antal, så lægges den direkte i returlisten. Findes varenavnet allerede (fx fra en analyseret fil), lægges antallet oveni i stedet for at oprette en ny linje.</p>
+    <div style="margin-bottom:1rem;">
+      <button type="button" onclick="document.getElementById('scan-input').click()" style="height:36px;">📷 Scan vare (stregkode / etiket)</button>
+      <input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none" onchange="scanVare(this.files);this.value='';"/>
+      <div id="scan-resultat" style="font-size:13px;margin-top:8px;"></div>
+    </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
       <div class="field-group" style="flex:2;min-width:160px;margin-bottom:0;">
         <label class="field-label">Varenavn</label>
@@ -1573,6 +1578,10 @@ async function hentMaterialeBibliotek(){
     const data=await resp.json();
     window._materialeBibliotek=data.navne||[];
     window._varebibliotek=data.varer||{};
+    window._eanBibliotek={};
+    for(const [e,v] of Object.entries(data.ean||{})){
+      try{const o=typeof v==='string'?JSON.parse(v):v;if(o&&o.navn)window._eanBibliotek[e]={varenr:o.varenr||'',navn:o.navn};}catch(_){}
+    }
     opdaterHurtigNavnListe((parsed&&parsed.ordrer||[]).flatMap(o=>(o.linjer||[]).map(l=>l.navn)));
     bidragFraAnalyse(); // gem varenumre fra den åbnede sag (udfylder biblioteket for ældre sager)
   }catch(e){}
@@ -1822,8 +1831,8 @@ function genererJobId(){
 
 // Gør et foto til et JPEG på højst 3000 px på den lange led (kvalitet 92 %). Respekterer kameraets rotation.
 // Høj opløsning og lav komprimering gør, at småt print (varenumre) kan læses sikkert.
-async function billedTilJpeg(file){
-  const MAKS=3000;
+async function billedTilJpeg(file,maksPixel,kvalitet){
+  const MAKS=maksPixel||3000;
   let bmp;
   try{
     bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
@@ -1838,7 +1847,7 @@ async function billedTilJpeg(file){
   ctx2.fillStyle='#fff';ctx2.fillRect(0,0,b,h); // hvid baggrund hvis PNG har gennemsigtighed
   ctx2.drawImage(bmp,0,0,b,h);
   if(bmp.close)bmp.close();
-  const jpeg=await new Promise(res=>canvas.toBlob(res,'image/jpeg',0.92));
+  const jpeg=await new Promise(res=>canvas.toBlob(res,'image/jpeg',kvalitet||0.92));
   if(!jpeg)throw new Error('Billedet kunne ikke formindskes');
   return jpeg;
 }
@@ -2162,12 +2171,145 @@ function bidragTilVarebibliotek(par,overskriv){
 // Biblioteket lærer KUN af pålidelige kilder: PDF'er med tekst i filen (kilde = "pdf") og af brugerens egne
 // rettelser. Fotos og ældre sager uden kildemærke bidrager ikke, så en fejllæsning aldrig bliver et "forslag".
 function bidragFraAnalyse(){
-  const par=[];
+  const par=[],eanPar=[];
   for(const ord of (parsed&&parsed.ordrer)||[]){
     if(ord.kilde!=='pdf'||!tællerMed(ord)||String(ord.ordrenr).startsWith('MANUEL'))continue;
-    for(const l of ord.linjer||[])par.push({varenr:l.varenr,navn:l.navn,lev:levAf(ord)});
+    for(const l of ord.linjer||[]){
+      par.push({varenr:l.varenr,navn:l.navn,lev:levAf(ord)});
+      if(l.ean&&l.varenr&&l.navn)eanPar.push({ean:l.ean,varenr:l.varenr,navn:l.navn});
+    }
   }
   bidragTilVarebibliotek(par,false);
+  bidragEan(eanPar,false);
+}
+
+// ── EAN (stregkode) → vare ──
+function gyldigEan(s){
+  s=String(s||'').replace(/\D/g,'');
+  if(!/^(\d{8}|\d{13})$/.test(s))return false;
+  const c=s.split('').map(Number);
+  const kontrol=c.pop();
+  const sum=c.reverse().reduce((a,d,i)=>a+d*(i%2===0?3:1),0);
+  return (10-(sum%10))%10===kontrol;
+}
+function bidragEan(par,overskriv){
+  if(!window._eanBibliotek)window._eanBibliotek={};
+  const bib=window._eanBibliotek;
+  const nye=[];
+  for(const p of par||[]){
+    const e=String(p.ean||'').replace(/\D/g,'');
+    const nv=String(p.navn||'').trim();
+    if(!gyldigEan(e)||!nv)continue;
+    if(!overskriv&&Object.prototype.hasOwnProperty.call(bib,e))continue;
+    if(overskriv&&bib[e]&&bib[e].navn===nv&&(bib[e].varenr||'')===(p.varenr||''))continue;
+    bib[e]={varenr:p.varenr||'',navn:nv};
+    nye.push({ean:e,varenr:p.varenr||'',navn:nv});
+  }
+  if(!nye.length)return;
+  fetch('/api/materialer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({ean:nye.slice(0,300),overskriv:!!overskriv})}).catch(()=>{});
+}
+
+// ── Scan vare: stregkode eller tekst på etiket → forslag fra varer appen HAR SET FØR ──
+// Appen gætter aldrig ud fra udseende. Kun EAN/varenr.-opslag og tekst-match mod firmaets eget bibliotek.
+let scanKontekst=null; // {ean, varenr, navn} for den vare brugeren har valgt via scanning
+
+function tekstTokens(s){return navnNøgle(s).split(' ').filter(t=>t.length>=2);}
+function talKlumper(s){return (String(s||'').match(/\d+/g)||[]);}
+function findKandidater(læst){
+  const bib=window._varebibliotek||{};
+  const label=[læst.navn,læst.storrelse,læst.tekst,læst.varenr].filter(Boolean).join(' ');
+  const labelTokens=new Set(tekstTokens(label));
+  const labelTal=new Set(talKlumper(label));
+  if(!labelTokens.size)return[];
+  const kandidater=[];
+  for(const [vn,navn] of Object.entries(bib)){
+    const toks=tekstTokens(navn);
+    if(!toks.length)continue;
+    // Alle tal i det kendte navn (størrelser!) skal også stå på etiketten — ellers er det en anden vare
+    const tal=talKlumper(navn);
+    if(tal.some(t=>!labelTal.has(t)))continue;
+    const delt=toks.filter(t=>labelTokens.has(t)).length;
+    if(delt<2)continue;
+    const dice=2*delt/(toks.length+labelTokens.size);
+    if(dice<0.25)continue;
+    kandidater.push({varenr:vn,navn,score:dice});
+  }
+  return kandidater.sort((a,b)=>b.score-a.score).slice(0,3);
+}
+
+async function scanVare(fileList){
+  const f=fileList&&fileList[0];
+  if(!f)return;
+  const el=document.getElementById('scan-resultat');
+  el.innerHTML='<span class="spin"></span> Læser billedet…';
+  scanKontekst=null;
+  try{
+    let ean=null;
+    // 1) Stregkode direkte i telefonen, hvis browseren kan (Chrome på Android)
+    if('BarcodeDetector' in window){
+      try{
+        const bmp=await createImageBitmap(f,{imageOrientation:'from-image'});
+        const koder=await new BarcodeDetector({formats:['ean_13','ean_8','upc_a']}).detect(bmp);
+        if(bmp.close)bmp.close();
+        for(const k of koder){
+          let v=String(k.rawValue||'').replace(/\D/g,'');
+          if(v.length===12)v='0'+v; // UPC-A er en EAN-13 med foranstillet 0
+          if(gyldigEan(v)){ean=v;break;}
+        }
+      }catch(_){}
+    }
+    const eanBib=window._eanBibliotek||{};
+    let læst=null;
+    // 2) Ingen kendt stregkode: lad AI'en aflæse etiketten (tekst og stregkodens tal)
+    if(!ean||!eanBib[ean]){
+      const jpeg=await billedTilJpeg(f,1800,0.85);
+      const data=await b64(jpeg);
+      const resp=await fetch('/api/scan-vare',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({billedeBase64:data})});
+      if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||('HTTP '+resp.status));}
+      læst=await resp.json();
+      if(!ean&&læst.ean)ean=læst.ean;
+    }
+    visScanResultat(ean,læst||{});
+  }catch(err){
+    el.innerHTML='<span style="color:var(--red)">Kunne ikke læse billedet: '+esc(err.message||'ukendt fejl')+'</span>';
+  }
+}
+
+function visScanResultat(ean,læst){
+  const el=document.getElementById('scan-resultat');
+  const eanBib=window._eanBibliotek||{};
+  const bib=window._varebibliotek||{};
+  const knap=(c,i)=>`<button type="button" class="ghost" onclick="vaelgScan(${i})" style="height:auto;min-height:30px;padding:4px 10px;margin:3px 6px 3px 0;text-align:left;">${esc(c.navn)}${c.varenr?` <span class="td-mono">${esc(c.varenr)}</span>`:''}</button>`;
+  let kandidater=[],overskrift='';
+  if(ean&&eanBib[ean]){
+    kandidater=[{...eanBib[ean],ean}];
+    overskrift=`✅ Stregkoden er kendt (${esc(ean)}):`;
+  }else if(læst.varenr&&Object.prototype.hasOwnProperty.call(bib,læst.varenr)){
+    kandidater=[{varenr:læst.varenr,navn:bib[læst.varenr],ean:ean||null}];
+    overskrift=`✅ Varenummer ${esc(læst.varenr)} er kendt:`;
+  }else{
+    kandidater=findKandidater(læst).map(c=>({...c,ean:ean||null}));
+    overskrift=kandidater.length?'Kan være en af disse (vælg den rigtige — tjek mod kassen):':'';
+  }
+  window._scanKandidater=kandidater;
+  const hint=[læst.navn,læst.storrelse,læst.varenr&&('nr. '+læst.varenr),ean&&('EAN '+ean)].filter(Boolean).join(' · ');
+  if(kandidater.length){
+    el.innerHTML=`<div style="color:var(--ink-2);margin-bottom:4px;">${overskrift}</div>${kandidater.map(knap).join('')}${hint?`<div style="color:var(--ink-3);font-size:12px;margin-top:4px;">Læst på billedet: ${esc(hint)}</div>`:''}`;
+  }else{
+    // Ukendt vare: gæt ikke. Husk stregkoden, så den kan genkendes næste gang navnet er skrevet.
+    scanKontekst=ean?{ean,varenr:'',navn:''}:null;
+    el.innerHTML=`<div style="color:var(--amber);">Ukendt vare — appen har ikke set den før. Skriv navnet selv nedenfor${ean?', så genkendes stregkoden næste gang':''}.</div>${hint?`<div style="color:var(--ink-3);font-size:12px;margin-top:4px;">Læst på billedet: ${esc(hint)}</div>`:''}`;
+    document.getElementById('hurtig-navn')?.focus();
+  }
+}
+
+function vaelgScan(i){
+  const c=(window._scanKandidater||[])[i];
+  if(!c)return;
+  document.getElementById('hurtig-navn').value=c.navn;
+  scanKontekst={ean:c.ean||null,varenr:c.varenr||'',navn:c.navn};
+  document.getElementById('scan-resultat').innerHTML=`✅ Valgt: <b>${esc(c.navn)}</b>${c.varenr?` (${esc(c.varenr)})`:''}`;
+  document.getElementById('hurtig-antal')?.focus();
 }
 function varenrAdvarsel(lev,varenr){
   return varenrMistænkt(lev,varenr)?` <span class="badge" style="background:#fffbeb;color:var(--amber);border:1px solid #fde68a;font-family:inherit;" title="${lev}-varenumre har normalt 9 cifre. Tjek tallet mod følgesedlen og ret det med ✎ hvis det er forkert.">⚠ tjek varenr.</span>`:'';
@@ -2227,11 +2369,14 @@ function hurtigRegistrering(){
   if(!parsed)parsed={ordrer:[]};
   const lev=document.getElementById('hurtig-lev')?.value||'BD';
   const maalNavn=normNavn(navn);
+  // Varenr. fra en scanning bruges kun, hvis navnet ikke er ændret bagefter
+  const sk=(scanKontekst&&(!scanKontekst.navn||normNavn(scanKontekst.navn)===maalNavn))?scanKontekst:null;
+  const scanVn=(sk&&sk.varenr)||'';
   let fundet=null;
   for(const ord of parsed.ordrer){
     if(!tællerMed(ord))continue;
     for(const l of ord.linjer||[]){
-      if(normNavn(l.navn)===maalNavn){fundet=l;break;}
+      if((scanVn&&l.varenr===scanVn)||normNavn(l.navn)===maalNavn){fundet=l;break;}
     }
     if(fundet)break;
   }
@@ -2245,19 +2390,27 @@ function hurtigRegistrering(){
       manuelOrd={ordrenr:manuelOrdrenr(lev),type:'manuel',leverandor:lev,dato:datoStr,linjer:[]};
       parsed.ordrer.push(manuelOrd);
     }
-    manuelOrd.linjer.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed});
+    manuelOrd.linjer.push({pos:null,varenr:scanVn,navn,beskrivelse:'',antal,enhed});
   }
   ctx=JSON.stringify(parsed);
 
   // Læg den samtidig direkte ind i returlisten, markeret til retur (det er jo pointen med hurtig registrering)
-  let row=returData.find(r=>normNavn(r.navn)===maalNavn);
+  let row=returData.find(r=>(scanVn&&r.varenr===scanVn)||normNavn(r.navn)===maalNavn);
   if(row){
     row.antal=(Number(row.antal)||0)+antal;
     row.returAntal=(Number(row.returAntal)||0)+antal;
     row.checked=true;
   }else{
-    returData.push({pos:null,varenr:'',navn,beskrivelse:'',antal,enhed,leverandor:lev,returAntal:antal,checked:true,note:'Manuelt registreret'});
+    returData.push({pos:null,varenr:scanVn,navn,beskrivelse:'',antal,enhed,leverandor:lev,returAntal:antal,checked:true,note:'Manuelt registreret'});
   }
+
+  // Lærte stregkoden at kende: brugeren har selv bekræftet navnet, så koden kan genkendes næste gang
+  if(scanKontekst&&scanKontekst.ean){
+    bidragEan([{ean:scanKontekst.ean,varenr:scanVn,navn}],true);
+  }
+  scanKontekst=null;
+  const scanEl=document.getElementById('scan-resultat');
+  if(scanEl)scanEl.innerHTML='';
 
   navnInput.value='';antalInput.value='';enhedInput.value='';
   const caseNum=document.getElementById('case-num')?.value||'ukendt';

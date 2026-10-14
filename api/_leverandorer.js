@@ -74,7 +74,8 @@ VIGTIGT om varelinjer — FAKTURA og KREDITNOTA:
 
 VIGTIGT om alle dokumenttyper:
 - "navn" er varenavnet præcis som det står (AO skriver ofte med store bogstaver og afkortet — behold det, men fjern overflødige mellemrum).
-- IGNORER linjer med "EAN:" og "Pakkenr / SSCC:" — de må ikke ind i navn eller beskrivelse. Læg eventuelle andre ekstra tekstlinjer i "beskrivelse".
+- Står der en linje "EAN: <tal>" under varen, så skriv KUN cifrene (8 eller 13) i feltet "ean". Findes der ingen EAN på varen, er "ean" en tom streng. EAN må IKKE ind i navn eller beskrivelse.
+- IGNORER linjer med "Pakkenr / SSCC:" — de må ikke ind i navn eller beskrivelse. Læg eventuelle andre ekstra tekstlinjer i "beskrivelse".
 - IGNORER kolli, emballage, nettovægt, bruttovægt, volume og totaler — det er ikke varer.
 - "enhed" er enheden efter antallet (STK, M, MTR, LGD, PK, SæT osv.) med små bogstaver, f.eks. "stk".
 - For kreditnotaer og returkvitteringer skal antal være negativt. Faktura, følgeseddel og ordrebekræftelse har positivt antal.
@@ -84,7 +85,7 @@ VIGTIGT om dato:
 - Datoen står enten som seks cifre ddmmåå (f.eks. 260826 = 26-08-26, 081026 = 08-10-26, 121026 = 12-10-26) eller som dd/mm/åååå (f.eks. 13/10/2026). Skriv den altid som "dd-mm-yy" (f.eks. "26-08-26").
 
 Returner KUN JSON uden markdown:
-{"ordrer":[{"ordrenr":"<10 cifre>","type":"<følgeseddel eller ordrebekræftelse eller faktura eller kreditnota eller returkvittering>","dato":"<dd-mm-yy>","linjer":[{"pos":"<linje eller null>","varenr":"<varenr>","navn":"<varenavn>","beskrivelse":"<ekstra linjer eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}`,
+{"ordrer":[{"ordrenr":"<10 cifre>","type":"<følgeseddel eller ordrebekræftelse eller faktura eller kreditnota eller returkvittering>","dato":"<dd-mm-yy>","linjer":[{"pos":"<linje eller null>","varenr":"<varenr>","navn":"<varenavn>","beskrivelse":"<ekstra linjer eller tom>","ean":"<EAN-cifre eller tom>","antal":<tal>,"enhed":"<stk>"}]}]}`,
   },
 };
 
