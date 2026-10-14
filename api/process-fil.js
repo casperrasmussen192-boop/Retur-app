@@ -95,7 +95,11 @@ export default async function handler(req, res) {
 
     const modelNavn = model === "sonnet" ? "claude-sonnet-4-5" : "claude-haiku-4-5-20251001";
 
-    const dokument = { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
+    // Billeder (fotos af følgesedler, formindsket til JPEG i browseren) sendes som billede, PDF'er som dokument
+    const erBillede = /\.(jpe?g)$/i.test(filnavn || "");
+    const dokument = erBillede
+      ? { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } }
+      : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
     // ── Trin 1: find leverandør (manuelt valg fra brugeren vinder over automatisk genkendelse) ──
     let leverandør = GYLDIGE.includes((leverandorValg || "").toUpperCase()) ? leverandorValg.toUpperCase() : null;

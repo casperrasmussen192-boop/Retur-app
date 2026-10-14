@@ -33,7 +33,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { filnavn, jobId, pdfBase64, uploadId, index, total } = req.body || {};
+    const { filnavn, jobId, pdfBase64, uploadId, index, total, contentType: ønsketType } = req.body || {};
+    const contentType = ønsketType === "image/jpeg" ? "image/jpeg" : "application/pdf";
     if (!filnavn || !jobId || !pdfBase64) {
       return res.status(400).json({ error: "Angiv filnavn, jobId og pdfBase64" });
     }
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
 
     const blob = await put(pathname, buffer, {
       access: "private",
-      contentType: "application/pdf",
+      contentType,
       addRandomSuffix: true,
     });
 

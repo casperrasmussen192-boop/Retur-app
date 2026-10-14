@@ -36,6 +36,8 @@ Returner KUN JSON uden markdown:
     system: "Du er en JSON-generator specialiseret i følgesedler og ordrebekræftelser fra AO / EA Værktøj. Returner KUN rå JSON startende med { og sluttende med }. Inkluder alle ordrer. Afslut altid JSON korrekt.",
     regler: `Udtrækker ALLE varelinjer fra dokumentet fra AO (EA Værktøj).
 
+Dokumentet kan være en PDF eller et foto af et papirdokument (taget på skrå, med skygger eller let sløret). Læs det på samme måde, og læs tal og varenumre særligt omhyggeligt. Gæt aldrig et ulæseligt tal — udelad hellere linjen.
+
 VIGTIGT om dokumenttype (stå i toppen af dokumentet):
 - "Følgeseddel": type = "følgeseddel".
 - "Ordrebekræftelse": type = "ordrebekræftelse".

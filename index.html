@@ -913,12 +913,12 @@ tbody tr:hover td { background: var(--surface-2); }
     </div>
 
     <div class="field-group">
-      <label class="field-label">PDF-filer fra SAP</label>
+      <label class="field-label">Følgesedler (PDF eller foto)</label>
       <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
         <div class="dropzone-icon">📂</div>
         <div class="dropzone-text">Klik eller træk filer hertil</div>
         <div class="dropzone-sub">Understøtter flere filer på én gang</div>
-        <input type="file" id="fi" accept=".pdf,application/pdf" multiple style="display:none"/>
+        <input type="file" id="fi" accept=".pdf,application/pdf,image/*" multiple style="display:none"/>
       </div>
       <div class="file-list" id="file-list"></div>
     </div>
@@ -1758,9 +1758,10 @@ dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
 dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
 fi.addEventListener('change',()=>{addFiles(fi.files);fi.value='';});
 
+function erBilledfil(f){return /^image\//.test(f.type)||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name);}
 function addFiles(list){
   for(const f of list)
-    if((f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))&&!files.find(x=>x.name===f.name&&x.size===f.size))
+    if((f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf')||erBilledfil(f))&&!files.find(x=>x.name===f.name&&x.size===f.size))
       files.push(f);
   renderFiles();
   document.getElementById('ab').disabled=files.length===0;
@@ -1770,8 +1771,8 @@ function removeFile(i){files.splice(i,1);renderFiles();document.getElementById('
 function renderFiles(){
   document.getElementById('file-list').innerHTML=files.map((f,i)=>`
     <div class="file-item">
-      <span class="file-pill">PDF</span>
-      <span class="file-name">${f.name}</span>
+      <span class="file-pill">${erBilledfil(f)?'FOTO':'PDF'}</span>
+      <span class="file-name">${esc(f.name)}</span>
       <span class="file-size">${Math.round(f.size/1024)} KB</span>
       <button class="danger" onclick="removeFile(${i})">Fjern</button>
     </div>`).join('');
@@ -1816,6 +1817,29 @@ function genererJobId(){
   return 'job-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
 }
 
+// Gør et foto til et JPEG på højst 2400 px på den lange led. Respekterer kameraets rotation.
+// 2400 px er nok til, at småt print (varenumre) stadig kan læses.
+async function billedTilJpeg(file){
+  const MAKS=2400;
+  let bmp;
+  try{
+    bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
+  }catch(e){
+    throw new Error('Billedet kunne ikke åbnes (brug JPG eller PNG)');
+  }
+  const skala=Math.min(1,MAKS/Math.max(bmp.width,bmp.height));
+  const b=Math.round(bmp.width*skala),h=Math.round(bmp.height*skala);
+  const canvas=document.createElement('canvas');
+  canvas.width=b;canvas.height=h;
+  const ctx2=canvas.getContext('2d');
+  ctx2.fillStyle='#fff';ctx2.fillRect(0,0,b,h); // hvid baggrund hvis PNG har gennemsigtighed
+  ctx2.drawImage(bmp,0,0,b,h);
+  if(bmp.close)bmp.close();
+  const jpeg=await new Promise(res=>canvas.toBlob(res,'image/jpeg',0.85));
+  if(!jpeg)throw new Error('Billedet kunne ikke formindskes');
+  return jpeg;
+}
+
 // Uploader filer til Blob med begrænset samtidighed (undgår at overbelaste serveren)
 async function uploadFilerTilBlob(fileList, jobId, apiKey, onProgress){
   const CONCURRENCY = 5;
@@ -1832,15 +1856,20 @@ async function uploadFilerTilBlob(fileList, jobId, apiKey, onProgress){
         // Store filer (fx fotos) sendes i stykker på 1,5 MB — Vercel afviser requests over ca. 4,5 MB.
         // 1,5 MB er deleligt med 3, så hvert stykke bliver gyldig base64 for sig.
         const STYKKE=1536*1024;
-        if(file.size>20*1024*1024)throw new Error('Filen er for stor (maks. 20 MB)');
-        const antalStykker=Math.max(1,Math.ceil(file.size/STYKKE));
+        // Fotos formindskes til JPEG i browseren (et 12 MP-foto på 6 MB bliver ca. 1 MB og stadig læseligt)
+        const erFoto=erBilledfil(file);
+        const kilde=erFoto?await billedTilJpeg(file):file;
+        const sendtNavn=erFoto?file.name.replace(/\.[^.]*$/,'')+'.jpg':file.name;
+        if(kilde.size>20*1024*1024)throw new Error('Filen er for stor (maks. 20 MB)');
+        const antalStykker=Math.max(1,Math.ceil(kilde.size/STYKKE));
         const uploadId=genererJobId();
+        const filtype=erFoto?'image/jpeg':'application/pdf';
         let result=null;
         for(let k=0;k<antalStykker;k++){
-          const data=await b64(file.slice(k*STYKKE,Math.min(file.size,(k+1)*STYKKE)));
+          const data=await b64(kilde.slice(k*STYKKE,Math.min(kilde.size,(k+1)*STYKKE)));
           const body=antalStykker===1
-            ?{ filnavn: file.name, jobId, pdfBase64: data }
-            :{ filnavn: file.name, jobId, uploadId, index:k, total:antalStykker, pdfBase64: data };
+            ?{ filnavn: sendtNavn, jobId, pdfBase64: data, contentType: filtype }
+            :{ filnavn: sendtNavn, jobId, uploadId, index:k, total:antalStykker, pdfBase64: data, contentType: filtype };
           const resp = await fetch('/api/blob-upload',{
             method:'POST',
             headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
@@ -1853,7 +1882,7 @@ async function uploadFilerTilBlob(fileList, jobId, apiKey, onProgress){
           result = await resp.json();
         }
         if(!result||!result.blobUrl)throw new Error('Upload blev ikke afsluttet');
-        resultater[i] = { blobUrl: result.blobUrl, filnavn: file.name };
+        resultater[i] = { blobUrl: result.blobUrl, filnavn: sendtNavn };
       }catch(err){
         fejledeUploads.push(file.name+' — '+(err.message||'upload fejlede'));
         resultater[i] = null;
@@ -1992,7 +2021,7 @@ function visFejlBanner(){
   errEl.innerHTML=`⚠ ${fejledeAktuelle.length} fil${fejledeAktuelle.length>1?'er':''} kunne ikke læses og er ikke med i analysen:<br><span style="font-family:'DM Mono',monospace;font-size:12px;">${fejledeAktuelle.join('<br>')}</span><br><br>
     Tjek disse filer, eller upload erstatningsfiler for kun de fejlede — resten af analysen køres ikke igen. Blev leverandøren ikke genkendt, så vælg den under "Leverandør" ovenfor først:<br><br>
     <button type="button" onclick="document.getElementById('retry-file-input').click()">📎 Vælg erstatningsfiler og prøv igen</button>
-    <input type="file" id="retry-file-input" accept="application/pdf" multiple style="display:none" onchange="retryFejledeFiler(this.files)"/>
+    <input type="file" id="retry-file-input" accept="application/pdf,image/*" multiple style="display:none" onchange="retryFejledeFiler(this.files)"/>
     <span id="retry-status" style="margin-left:8px;font-size:12px;"></span>`;
 }
 
