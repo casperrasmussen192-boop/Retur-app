@@ -138,6 +138,9 @@ export default async function handler(req, res) {
     const data = JSON.parse(tekst.slice(start, slut + 1));
     // Stempl hver ordre med leverandøren, så frontend kan dele returlisten pr. leverandør
     for (const o of data.ordrer || []) o.leverandor = leverandør;
+    // Hvor stammer tallene fra? En PDF har selve teksten i filen (pålidelig), et foto skal aflæses (kan fejllæses).
+    // Bruges til kun at lade pålidelige læsninger ind i firmaets varebibliotek.
+    for (const o of data.ordrer || []) o.kilde = erBillede ? "foto" : "pdf";
 
     // ── Atomare opdateringer: ingen læs-ret-skriv på et fælles objekt ──
     // Gem denne fils resultat som sit eget listeelement (RPUSH er atomisk)

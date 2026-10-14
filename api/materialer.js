@@ -17,7 +17,8 @@ export default async function handler(req, res) {
 
   const key = "firma:" + user.firmaId + ":materialer";
   // Varenummer -> varenavn (bruges til at foreslå rettelser, når et varenummer eller navn ser forkert ud)
-  const varerKey = "firma:" + user.firmaId + ":varenumre";
+  // "-v2": bibliotek nulstillet, så det kun indeholder pålidelige par (se bidragFraAnalyse i index.html)
+  const varerKey = "firma:" + user.firmaId + ":varenumre-v2";
 
   if (req.method === "GET") {
     try {

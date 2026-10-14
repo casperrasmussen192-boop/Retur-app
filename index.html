@@ -2159,10 +2159,12 @@ function bidragTilVarebibliotek(par,overskriv){
   if(!nye.length)return;
   fetch('/api/materialer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getApiKey()},body:JSON.stringify({par:nye.slice(0,300),overskriv:!!overskriv})}).catch(()=>{});
 }
+// Biblioteket lærer KUN af pålidelige kilder: PDF'er med tekst i filen (kilde = "pdf") og af brugerens egne
+// rettelser. Fotos og ældre sager uden kildemærke bidrager ikke, så en fejllæsning aldrig bliver et "forslag".
 function bidragFraAnalyse(){
   const par=[];
   for(const ord of (parsed&&parsed.ordrer)||[]){
-    if(!tællerMed(ord)||String(ord.ordrenr).startsWith('MANUEL'))continue;
+    if(ord.kilde!=='pdf'||!tællerMed(ord)||String(ord.ordrenr).startsWith('MANUEL'))continue;
     for(const l of ord.linjer||[])par.push({varenr:l.varenr,navn:l.navn,lev:levAf(ord)});
   }
   bidragTilVarebibliotek(par,false);
