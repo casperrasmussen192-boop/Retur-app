@@ -1829,20 +1829,33 @@ async function uploadFilerTilBlob(fileList, jobId, apiKey, onProgress){
       const i = næste++;
       const file = fileList[i];
       try{
-        const data = await b64(file);
-        const resp = await fetch('/api/blob-upload',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-          body: JSON.stringify({ filnavn: file.name, jobId, pdfBase64: data })
-        });
-        if(!resp.ok){
-          const e = await resp.json().catch(()=>({}));
-          throw new Error(e.error || `HTTP ${resp.status}`);
+        // Store filer (fx fotos) sendes i stykker på 1,5 MB — Vercel afviser requests over ca. 4,5 MB.
+        // 1,5 MB er deleligt med 3, så hvert stykke bliver gyldig base64 for sig.
+        const STYKKE=1536*1024;
+        if(file.size>20*1024*1024)throw new Error('Filen er for stor (maks. 20 MB)');
+        const antalStykker=Math.max(1,Math.ceil(file.size/STYKKE));
+        const uploadId=genererJobId();
+        let result=null;
+        for(let k=0;k<antalStykker;k++){
+          const data=await b64(file.slice(k*STYKKE,Math.min(file.size,(k+1)*STYKKE)));
+          const body=antalStykker===1
+            ?{ filnavn: file.name, jobId, pdfBase64: data }
+            :{ filnavn: file.name, jobId, uploadId, index:k, total:antalStykker, pdfBase64: data };
+          const resp = await fetch('/api/blob-upload',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+            body: JSON.stringify(body)
+          });
+          if(!resp.ok){
+            const e = await resp.json().catch(()=>({}));
+            throw new Error(e.error || (resp.status===413?'Filen er for stor':`HTTP ${resp.status}`));
+          }
+          result = await resp.json();
         }
-        const result = await resp.json();
+        if(!result||!result.blobUrl)throw new Error('Upload blev ikke afsluttet');
         resultater[i] = { blobUrl: result.blobUrl, filnavn: file.name };
       }catch(err){
-        fejledeUploads.push(file.name);
+        fejledeUploads.push(file.name+' — '+(err.message||'upload fejlede'));
         resultater[i] = null;
       }
       færdige++;
@@ -1906,7 +1919,7 @@ async function go(){
     });
 
     if(!filer.length){
-      showErr('Ingen filer kunne uploades. Prøv igen.');
+      showErr('Ingen filer kunne uploades. Prøv igen.'+(fejledeUploads.length?' ('+fejledeUploads[0]+')':''));
       btn.disabled=false;
       return;
     }
